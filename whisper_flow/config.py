@@ -311,6 +311,18 @@ def config_to_dict(cfg: Config) -> dict[str, Any]:
     d = asdict(cfg)
     return d
 
+def _fmt_toml_val(v: Any) -> str:
+    if isinstance(v, str):
+        if "\\" in v:
+            return f"'{v}'"
+        return f'"{v}"'
+    if isinstance(v, bool):
+        return str(v).lower()
+    if isinstance(v, list):
+        items = [_fmt_toml_val(item) for item in v]
+        return f"[{', '.join(items)}]"
+    return str(v)
+
 
 def save_config(cfg: Config, path: str) -> None:
     """Save Config to a TOML or JSON file."""
@@ -327,15 +339,7 @@ def save_config(cfg: Config, path: str) -> None:
         # Top-level scalars and lists
         for k, v in data.items():
             if not isinstance(v, dict):
-                if isinstance(v, str):
-                    lines.append(f'{k} = "{v}"')
-                elif isinstance(v, bool):
-                    lines.append(f'{k} = {str(v).lower()}')
-                elif isinstance(v, list):
-                    items_str = ", ".join(f'"{item}"' for item in v)
-                    lines.append(f'{k} = [{items_str}]')
-                else:
-                    lines.append(f'{k} = {v}')
+                lines.append(f"{k} = {_fmt_toml_val(v)}")
         lines.append("")
         # Tables
         for k, v in data.items():
@@ -346,25 +350,16 @@ def save_config(cfg: Config, path: str) -> None:
                     lines.append(f"[{k}]")
                     for sub_k, sub_v in v.items():
                         if not isinstance(sub_v, dict):
-                            if isinstance(sub_v, str):
-                                lines.append(f'{sub_k} = "{sub_v}"')
-                            elif isinstance(sub_v, bool):
-                                lines.append(f'{sub_k} = {str(sub_v).lower()}')
-                            else:
-                                lines.append(f'{sub_k} = {sub_v}')
+                            lines.append(f"{sub_k} = {_fmt_toml_val(sub_v)}")
                     lines.append("")
                 # Next write sub-tables
                 for sub_k, sub_v in v.items():
                     if isinstance(sub_v, dict):
                         lines.append(f"[{k}.{sub_k}]")
                         for ssk, ssv in sub_v.items():
-                            if isinstance(ssv, str):
-                                lines.append(f'{ssk} = "{ssv}"')
-                            elif isinstance(ssv, bool):
-                                lines.append(f'{ssk} = {str(ssv).lower()}')
-                            else:
-                                lines.append(f'{ssk} = {ssv}')
+                            lines.append(f"{ssk} = {_fmt_toml_val(ssv)}")
                         lines.append("")
+
         with open(path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
 

@@ -1,53 +1,67 @@
-# Local llama.cpp setup for Whisperflow.
-# Start the LLM server with:
-# D:\llama4\llama-server.exe -hf unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL --host 127.0.0.1 --port 8081 --ctx-size 32768 --n-gpu-layers 999 --parallel 2 --alias gemma-4-e4b-it --reasoning off --reasoning-budget 0
-#
-# See PROGRESS.md for the full history of what works and what doesn't.
-# Key: Qwen3-ASR + mode="auto" (LLM cleanup) is the working configuration.
-
-mode = "auto"
-verbose = false
 writing_style = "default"
 smart_formatting = true
+mode = "auto"
+verbose = false
 dictation_hotkey = "ctrl+shift+space"
 command_hotkey = "ctrl+shift+t"
 dictionary = ["daemon", "daemon.py", "WhisperFlow", "whisper_flow", "Wispr Flow", "whisper.cpp", "llama.cpp", "GGUF", "Python", "VS Code", "GitHub", "pytest", "API", "Qwen3-ASR (kwen three)", "Qwen3 (kwen three)", "Moonshine", "crispasr", "CrispASR"]
 
 [transcription]
-backend = "qwen3_asr"
-# Whisper (legacy, kept for fallback)
+backend = "whisper_cpp"
 whisper_bin = 'C:\Users\Parth\Desktop\whisper\third_party\whisper.cpp-bin\whisper-bin-x64\Release\whisper-cli.exe'
-model = 'C:\Users\Parth\Desktop\whisper\models\ggml-base.en.bin'
-# Qwen3-ASR (primary STT engine)
+model = 'C:\Users\Parth\Desktop\whisper\models\ggml-small.en.bin'
+language = "en"
+translate = false
+threads = 8
+gpu = "auto"
+flash_attention = false
+max_len = 0
+vad = false
+vad_model = ""
+vad_threshold = 0.5
+vad_min_speech_ms = 0
+vad_min_silence_ms = 0
+vad_max_speech_s = 0
+vad_speech_pad_ms = 0
 qwen3_asr_bin = 'C:\Users\Parth\Desktop\whisper\third_party\crispasr\crispasr.exe'
 qwen3_asr_model = 'C:\Users\Parth\Desktop\whisper\models\qwen3-asr-1.7b-q4_k.gguf'
 qwen3_asr_mmproj = 'C:\Users\Parth\Desktop\whisper\models\mmproj-Qwen3-ASR-1.7B-Q8_0.gguf'
-language = "en"
-threads = 8
-flash_attention = false
-
-[audio]
-mic_backend = "sounddevice"
-mic_device = "default"
-stream = true
-stream_chunk_s = 1
-stream_max_s = 12
 
 [llm]
 mode = "server"
 llama_server_bin = 'D:\llama4\llama-server.exe'
 llama_cli_bin = 'D:\llama4\llama-cli.exe'
 model = 'C:\Users\Parth\.cache\huggingface\hub\models--unsloth--gemma-4-E4B-it-GGUF\snapshots\e1d90e5fb9f61d8dc71ef016580784a054e5c787\gemma-4-E4B-it-UD-Q4_K_XL.gguf'
+mmproj = ""
 host = "127.0.0.1"
 port = 8081
-n_ctx = 2048
-temperature = 0.3
+temperature = 0.0
 max_tokens = 2048
 top_p = 0.9
+n_ctx = 1024
+threads = 4
+gpu_layers = 0
+
+[audio]
+ffmpeg_bin = "ffmpeg"
+arecord_bin = "arecord"
+sample_rate = 16000
+channels = 1
+mic_device = "default"
+mic_backend = "sounddevice"
+chunk_seconds = 0
+stream = true
+stream_chunk_s = 1
+stream_max_s = 12
+
+[output]
+format = "text"
+write_files = false
+out_dir = ""
 
 [snippets]
-"my email" = "parth@example.com"
-"my signature" = "Best regards,\nParth"
+my email = "parth@example.com"
+my signature = "Best regards, Parth"
 
 [app_styles.work_messaging]
 mode = "medium"
@@ -60,3 +74,5 @@ writing_style = "casual"
 [app_styles.code]
 mode = "none"
 writing_style = "default"
+
+[custom_transforms]

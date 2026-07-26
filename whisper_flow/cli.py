@@ -409,6 +409,42 @@ def _cmd_gui(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_grid_search(args: argparse.Namespace) -> int:
+    """Run an automated hyperparameter grid search across all configurations."""
+    from .grid_search import run_hyperparameter_grid_search
+    from .config import load_config, save_config
+
+    config_path = args.config or "config.llama4.toml"
+    best_score, all_results = run_hyperparameter_grid_search()
+
+    print(f"\n=======================================================================")
+    print(f"       [WINNER] OPTIMAL HYPERPARAMETER CONFIGURATION FOUND")
+    print(f"=======================================================================")
+    print(f"  Overall Quality Score:   {best_score.overall_score}%")
+    print(f"  Proper Noun Fidelity:    {best_score.proper_noun_score}%")
+    print(f"  Intent Retention:        {best_score.intent_retention_score}%")
+    print(f"  Filler Cleanup:          {best_score.filler_cleanup_score}%")
+    print(f"-----------------------------------------------------------------------")
+    print(f"  LLM Temperature:         {best_score.temperature} (Greedy / Deterministic)")
+    print(f"  Phase 1 Smart Format:    {best_score.smart_formatting}")
+    print(f"  Mode:                    {best_score.mode}")
+    print(f"  Writing Style:           {best_score.writing_style}")
+    print(f"  Context Window (n_ctx):  {best_score.n_ctx}")
+    print(f"=======================================================================\n")
+
+    if getattr(args, "apply", False):
+        cfg = load_config(config_path)
+        cfg.llm.temperature = best_score.temperature
+        cfg.smart_formatting = best_score.smart_formatting
+        cfg.mode = best_score.mode
+        cfg.writing_style = best_score.writing_style
+        cfg.llm.n_ctx = best_score.n_ctx
+        save_config(cfg, config_path)
+        print(f"[OK] Applied winning configuration to {config_path} successfully!")
+
+    return 0
+
+
 def _cmd_bench(args: argparse.Namespace) -> int:
     """Run a file through the pipeline and write a benchmark report."""
     if not args.file:
@@ -522,6 +558,11 @@ def build_parser() -> argparse.ArgumentParser:
     sp_gui = sub.add_parser("gui", aliases=["dashboard"], help="launch the live hyperparameter Control Center Dashboard GUI",
                             parents=[parent])
     sp_gui.set_defaults(func=_cmd_gui)
+
+    sp_sweep = sub.add_parser("sweep", aliases=["grid-search"], help="run automated hyperparameter grid search",
+                              parents=[parent])
+    sp_sweep.add_argument("--apply", action="store_true", help="apply winning configuration to config.llama4.toml")
+    sp_sweep.set_defaults(func=_cmd_grid_search)
 
     return p
 
