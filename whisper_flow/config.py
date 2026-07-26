@@ -84,7 +84,7 @@ class LLMConfig:
     host: str = "127.0.0.1"
     port: int = 8080
     # Generation
-    temperature: float = 0.3
+    temperature: float = 0.0
     max_tokens: int = 512
     top_p: float = 0.9
     # Extra context length to reserve for the prompt (helps avoid truncation).
