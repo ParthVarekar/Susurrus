@@ -11,16 +11,20 @@ writing_style = "default"
 smart_formatting = true
 dictation_hotkey = "ctrl+shift+space"
 command_hotkey = "ctrl+shift+t"
-dictionary = ["daemon", "daemon.py", "WhisperFlow", "whisper_flow", "Wispr Flow", "whisper.cpp", "llama.cpp", "GGUF", "Python", "VS Code", "GitHub", "pytest", "API", "Gemma", "Gemma 2", "Gemma 4", "Gemma 4 E2B", "Gemma-4 E2B", "E2B", "E4B", "Qwen3-ASR", "CrispASR"]
+dictionary = ["daemon", "daemon.py", "WhisperFlow", "whisper_flow", "Wispr Flow", "whisper.cpp", "llama.cpp", "GGUF", "Python", "VS Code", "GitHub", "pytest", "API", "Qwen3-ASR (kwen three)", "Qwen3 (kwen three)", "Moonshine", "crispasr", "CrispASR"]
 
 [transcription]
-backend = "whisper_cpp"
-# GPU Accelerated whisper.cpp (small.en - sub-2s latency + prompt bias)
+backend = "qwen3_asr"
+# Whisper (legacy, kept for fallback)
 whisper_bin = 'C:\Users\Parth\Desktop\whisper\third_party\whisper.cpp-bin\whisper-bin-x64\Release\whisper-cli.exe'
-model = 'C:\Users\Parth\Desktop\whisper\models\ggml-small.en.bin'
+model = 'C:\Users\Parth\Desktop\whisper\models\ggml-base.en.bin'
+# Qwen3-ASR (primary STT engine)
+qwen3_asr_bin = 'C:\Users\Parth\Desktop\whisper\third_party\crispasr\crispasr.exe'
+qwen3_asr_model = 'C:\Users\Parth\Desktop\whisper\models\qwen3-asr-1.7b-q4_k.gguf'
+qwen3_asr_mmproj = 'C:\Users\Parth\Desktop\whisper\models\mmproj-Qwen3-ASR-1.7B-Q8_0.gguf'
 language = "en"
 threads = 8
-flash_attention = true
+flash_attention = false
 
 [audio]
 mic_backend = "sounddevice"
@@ -33,13 +37,13 @@ stream_max_s = 12
 mode = "server"
 llama_server_bin = 'D:\llama4\llama-server.exe'
 llama_cli_bin = 'D:\llama4\llama-cli.exe'
-model = 'C:\Users\Parth\.cache\huggingface\hub\models--unsloth--gemma-4-E2B-it-GGUF\snapshots\0314792d7f1f7e229411f620751375812bb9faf2\gemma-4-E2B-it-UD-Q4_K_XL.gguf'
+model = 'C:\Users\Parth\.cache\huggingface\hub\models--unsloth--gemma-4-E4B-it-GGUF\snapshots\e1d90e5fb9f61d8dc71ef016580784a054e5c787\gemma-4-E4B-it-UD-Q4_K_XL.gguf'
 host = "127.0.0.1"
 port = 8081
 n_ctx = 2048
-temperature = 0.0
+temperature = 0.3
 max_tokens = 2048
-top_p = 1.0
+top_p = 0.9
 
 [snippets]
 "my email" = "parth@example.com"
