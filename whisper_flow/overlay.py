@@ -239,6 +239,26 @@ class OverlayNotifier:
         meter_canvas = tk.Canvas(top_row, width=90, height=14, bg=bg_color, highlightthickness=0)
         meter_canvas.pack(side=tk.RIGHT)
 
+        # Interactive Close (×) button for immediate HUD dismissal
+        close_btn = tk.Label(
+            top_row,
+            text="✕",
+            fg="#94a3b8",
+            bg=bg_color,
+            font=("Segoe UI", 11, "bold"),
+            cursor="hand2",
+            padx=4,
+        )
+        close_btn.pack(side=tk.RIGHT, padx=(8, 0))
+
+        def _on_close_hud(event=None):
+            self.hide()
+
+        close_btn.bind("<Button-1>", _on_close_hud)
+        close_btn.bind("<Enter>", lambda e: close_btn.config(fg="#f87171"))
+        close_btn.bind("<Leave>", lambda e: close_btn.config(fg="#94a3b8"))
+        root.bind("<Escape>", _on_close_hud)
+
         # Preview / Result text section (multi-line wrapped text box)
         content_var = tk.StringVar(value="")
         content_lbl = tk.Label(
