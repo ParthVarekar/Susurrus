@@ -311,7 +311,13 @@ def config_to_dict(cfg: Config) -> dict[str, Any]:
     d = asdict(cfg)
     return d
 
-def _fmt_toml_val(v: Any) -> str:
+def _fmt_toml_key(k: str) -> str:
+    if " " in k or "-" in k or "." in k:
+        return f'"{k}"'
+    return k
+
+
+def _fmt_toml_val(v: Any) -> str:
     if isinstance(v, str):
         if "\\" in v:
             return f"'{v}'"
@@ -339,7 +345,7 @@ def save_config(cfg: Config, path: str) -> None:
         # Top-level scalars and lists
         for k, v in data.items():
             if not isinstance(v, dict):
-                lines.append(f"{k} = {_fmt_toml_val(v)}")
+                lines.append(f"{_fmt_toml_key(k)} = {_fmt_toml_val(v)}")
         lines.append("")
         # Tables
         for k, v in data.items():
@@ -350,14 +356,14 @@ def save_config(cfg: Config, path: str) -> None:
                     lines.append(f"[{k}]")
                     for sub_k, sub_v in v.items():
                         if not isinstance(sub_v, dict):
-                            lines.append(f"{sub_k} = {_fmt_toml_val(sub_v)}")
+                            lines.append(f"{_fmt_toml_key(sub_k)} = {_fmt_toml_val(sub_v)}")
                     lines.append("")
                 # Next write sub-tables
                 for sub_k, sub_v in v.items():
                     if isinstance(sub_v, dict):
                         lines.append(f"[{k}.{sub_k}]")
                         for ssk, ssv in sub_v.items():
-                            lines.append(f"{ssk} = {_fmt_toml_val(ssv)}")
+                            lines.append(f"{_fmt_toml_key(ssk)} = {_fmt_toml_val(ssv)}")
                         lines.append("")
 
         with open(path, "w", encoding="utf-8") as f:

@@ -60,8 +60,8 @@ write_files = false
 out_dir = ""
 
 [snippets]
-my email = "parth@example.com"
-my signature = "Best regards, Parth"
+"my email" = "parth@example.com"
+"my signature" = "Best regards, Parth"
 
 [app_styles.work_messaging]
 mode = "medium"
