@@ -401,6 +401,14 @@ def _cmd_list_devices(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_gui(args: argparse.Namespace) -> int:
+    """Launch the Control Center Dashboard GUI."""
+    from .dashboard import launch_dashboard
+    config_path = args.config or "config.llama4.toml"
+    launch_dashboard(config_path=config_path)
+    return 0
+
+
 def _cmd_bench(args: argparse.Namespace) -> int:
     """Run a file through the pipeline and write a benchmark report."""
     if not args.file:
@@ -510,6 +518,10 @@ def build_parser() -> argparse.ArgumentParser:
     _add_common_llm_opts(sp_bench)
     sp_bench.add_argument("--out", default="benchmarks", help="output dir for reports")
     sp_bench.set_defaults(func=_cmd_bench)
+
+    sp_gui = sub.add_parser("gui", aliases=["dashboard"], help="launch the live hyperparameter Control Center Dashboard GUI",
+                            parents=[parent])
+    sp_gui.set_defaults(func=_cmd_gui)
 
     return p
 

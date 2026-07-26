@@ -169,7 +169,16 @@ class TrayIcon:
             for s in styles
         ]
 
+        def _handle_open_dashboard(icon, item):
+            try:
+                from .dashboard import launch_dashboard
+                threading.Thread(target=launch_dashboard, daemon=True).start()
+            except Exception as e:  # noqa: BLE001
+                sys.stderr.write(f"[whisper-flow] Failed to launch dashboard: {e}\n")
+
         menu = pystray.Menu(
+            pystray.MenuItem("⚙️ Settings Dashboard", _handle_open_dashboard),
+            pystray.Menu.SEPARATOR,
             pystray.MenuItem("Cleanup Level", pystray.Menu(*mode_items)),
             pystray.MenuItem("Writing Style", pystray.Menu(*style_items)),
             pystray.Menu.SEPARATOR,

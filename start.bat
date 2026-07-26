@@ -37,6 +37,12 @@ if defined VENV_DIR (
     echo        (recommended: create one with: python -m venv .venv)
 )
 
+if /i "%1"=="gui" (
+    echo [OK] Launching WhisperFlow Control Center Dashboard GUI...
+    python -m whisper_flow gui --config config.llama4.toml
+    exit /b 0
+)
+
 :: -----------------------------------------------------------------------
 :: 3. Ensure required Python packages are installed
 :: -----------------------------------------------------------------------

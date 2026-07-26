@@ -324,13 +324,16 @@ def save_config(cfg: Config, path: str) -> None:
     else:
         # Minimal TOML serialization for standard config
         lines = []
-        # Top-level scalars
+        # Top-level scalars and lists
         for k, v in data.items():
-            if not isinstance(v, (dict, list)):
+            if not isinstance(v, dict):
                 if isinstance(v, str):
                     lines.append(f'{k} = "{v}"')
                 elif isinstance(v, bool):
                     lines.append(f'{k} = {str(v).lower()}')
+                elif isinstance(v, list):
+                    items_str = ", ".join(f'"{item}"' for item in v)
+                    lines.append(f'{k} = [{items_str}]')
                 else:
                     lines.append(f'{k} = {v}')
         lines.append("")
