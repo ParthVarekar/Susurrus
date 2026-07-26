@@ -4,7 +4,7 @@ mode = "auto"
 verbose = false
 dictation_hotkey = "ctrl+shift+space"
 command_hotkey = "ctrl+shift+t"
-dictionary = ["daemon", "daemon.py", "WhisperFlow", "whisper_flow", "Wispr Flow", "whisper.cpp", "llama.cpp", "GGUF", "Python", "VS Code", "GitHub", "pytest", "API", "Qwen3-ASR (kwen three)", "Qwen3 (kwen three)", "Moonshine", "crispasr", "CrispASR"]
+dictionary = ["daemon", "daemon.py", "WhisperFlow", "whisper_flow", "Wispr Flow", "whisper.cpp", "llama.cpp", "GGUF", "Python", "VS Code", "GitHub", "pytest", "API", "Claude", "Claude 3.5", "Claude 3.5 Opus", "Opus", "Gemini", "Gemini Flash", "Gemini Flash 3.6", "Gemma", "Gemma 4", "Gemma 4 E2B", "Qwen3-ASR", "CrispASR", "Dario Amodei", "Sam Altman", "Demis Hassabis", "Zorin", "Zorin OS", "WSL", "Linux", "MongoDB", "Tembe", "internal pointers", "multivariable pointer"]
 
 [transcription]
 backend = "whisper_cpp"
