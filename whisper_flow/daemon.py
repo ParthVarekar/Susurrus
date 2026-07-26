@@ -55,8 +55,9 @@ def _clean_llm_output(text: str) -> str:
 class Daemon:
     """Main daemon class that orchestrates the Wispr Flow-like experience."""
 
-    def __init__(self, cfg: Config):
+    def __init__(self, cfg: Config, config_path: str = "config.llama4.toml"):
         self.cfg = cfg
+        self.config_path = config_path
         self._overlay = OverlayNotifier(opacity=0.85)
         # Sync the overlay's initial mode with the config mode.
         # Without this, the overlay defaults to "auto" which would trigger
@@ -110,6 +111,19 @@ class Daemon:
             self._overlay.preview(partial)
             time.sleep(delay)
 
+    def _on_dashboard_apply(self, new_cfg: Config) -> None:
+        """Apply live hyperparameter updates from the Control Center Dashboard GUI."""
+        self.cfg = new_cfg
+        self._overlay.set_mode(new_cfg.mode)
+        self._overlay.set_writing_style(new_cfg.writing_style)
+        self._pipeline.cfg = new_cfg
+        self._snippets = getattr(new_cfg, "snippets", {})
+        base_dict = list(getattr(new_cfg, "dictionary", []))
+        from .vocabulary import load_learned_vocabulary
+        learned_words = load_learned_vocabulary()
+        self._dictionary = base_dict + [w for w in learned_words if w not in base_dict]
+        sys.stderr.write("[whisper-flow] Live hyperparameter updates applied from Control Center Dashboard.\n")
+
     def run(self) -> None:
         """Start the daemon (blocking). Call from main thread."""
         self._running = True
@@ -133,6 +147,19 @@ class Daemon:
             current_style=self.cfg.writing_style,
         )
         self._tray.start()
+
+        # Auto-launch Control Center Dashboard GUI thread in the background
+        try:
+            from .dashboard import launch_dashboard
+            dashboard_thread = threading.Thread(
+                target=launch_dashboard,
+                kwargs={"config_path": self.config_path, "on_apply": self._on_dashboard_apply},
+                daemon=True,
+            )
+            dashboard_thread.start()
+            sys.stderr.write("[whisper-flow] Control Center Dashboard GUI launched automatically.\n")
+        except Exception as dash_exc:
+            sys.stderr.write(f"[whisper-flow] Could not auto-start dashboard GUI: {dash_exc}\n")
 
         # Start hotkey listener
         dictation_hotkey = getattr(self.cfg, "dictation_hotkey", "ctrl+shift+space")
@@ -707,8 +734,8 @@ class Daemon:
                 self._tray.update_tooltip("whisper-flow (idle)")
 
 
-def run_daemon(cfg: Config) -> int:
+def run_daemon(cfg: Config, config_path: str = "config.llama4.toml") -> int:
     """Entry point for the daemon command."""
-    daemon = Daemon(cfg)
+    daemon = Daemon(cfg, config_path=config_path)
     daemon.run()
     return 0

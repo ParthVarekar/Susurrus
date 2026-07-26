@@ -337,7 +337,7 @@ def _cmd_check(args: argparse.Namespace) -> int:
 def _cmd_daemon(args: argparse.Namespace) -> int:
     from .daemon import run_daemon
     cfg = load_config(args.config, _overrides_from_args(args))
-    return run_daemon(cfg)
+    return run_daemon(cfg, config_path=args.config or "config.llama4.toml")
 
 
 def _cmd_serve(args: argparse.Namespace) -> int:
