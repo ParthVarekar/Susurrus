@@ -124,14 +124,26 @@ class RAGEngine:
 
         # Sort by similarity score descending
         scores.sort(key=lambda x: x[0], reverse=True)
-        results = [term for _, term in scores[:top_k]]
+        
+        selected: list[str] = []
+        char_count = 0
+        max_budget = 4000
 
-        # Fall back to base terms if results are fewer than top_k
-        if len(results) < top_k:
-            remaining = [t for t in self.terms.keys() if t not in results]
-            results.extend(remaining[: top_k - len(results)])
+        for _, term in scores:
+            if len(selected) >= top_k or char_count + len(term) > max_budget:
+                break
+            selected.append(term)
+            char_count += len(term)
 
-        return results
+        if len(selected) < top_k:
+            remaining = [t for t in self.terms.keys() if t not in selected]
+            for r in remaining:
+                if len(selected) >= top_k or char_count + len(r) > max_budget:
+                    break
+                selected.append(r)
+                char_count += len(r)
+
+        return selected
 
     def save(self, path: str | None = None) -> None:
         """Persist index to JSON disk storage."""

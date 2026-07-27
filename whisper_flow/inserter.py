@@ -43,15 +43,18 @@ def _insert_windows(text: str, target_hwnd: int = 0) -> None:
     CF_UNICODETEXT = 13
     GMEM_MOVEABLE = 0x0002
 
-    # -- Set new text to clipboard (no save/restore — text stays for re-paste) --
+    # -- Set new text to clipboard with exponential backoff retry --
     try:
-        if not user32.OpenClipboard(0):
-            # Retry once after a short delay
-            time.sleep(0.05)
-            if not user32.OpenClipboard(0):
-                # Last resort: use pyperclip
-                _insert_fallback(text)
-                return
+        opened = False
+        for delay in (0.01, 0.02, 0.04, 0.08, 0.15):
+            if user32.OpenClipboard(0):
+                opened = True
+                break
+            time.sleep(delay)
+
+        if not opened:
+            _insert_fallback(text)
+            return
 
         user32.EmptyClipboard()
 

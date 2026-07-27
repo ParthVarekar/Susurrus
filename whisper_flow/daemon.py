@@ -94,6 +94,8 @@ class Daemon:
         # Merge preserving order and uniqueness
         self._dictionary = base_dict + [w for w in learned_words if w not in base_dict]
 
+        self._lock = threading.RLock()
+
         # Initialize fast local RAG Vocabulary Engine
         from .rag_engine import RAGEngine
         self._rag = RAGEngine()
@@ -118,16 +120,17 @@ class Daemon:
 
     def _on_dashboard_apply(self, new_cfg: Config) -> None:
         """Apply live hyperparameter updates from the Control Center Dashboard GUI."""
-        self.cfg = new_cfg
-        self._overlay.set_mode(new_cfg.mode)
-        self._overlay.set_writing_style(new_cfg.writing_style)
-        self._pipeline.cfg = new_cfg
-        self._snippets = getattr(new_cfg, "snippets", {})
-        base_dict = list(getattr(new_cfg, "dictionary", []))
-        from .vocabulary import load_learned_vocabulary
-        learned_words = load_learned_vocabulary()
-        self._dictionary = base_dict + [w for w in learned_words if w not in base_dict]
-        self._rag.add_terms(self._dictionary)
+        with self._lock:
+            self.cfg = new_cfg
+            self._overlay.set_mode(new_cfg.mode)
+            self._overlay.set_writing_style(new_cfg.writing_style)
+            self._pipeline.cfg = new_cfg
+            self._snippets = getattr(new_cfg, "snippets", {})
+            base_dict = list(getattr(new_cfg, "dictionary", []))
+            from .vocabulary import load_learned_vocabulary
+            learned_words = load_learned_vocabulary()
+            self._dictionary = base_dict + [w for w in learned_words if w not in base_dict]
+            self._rag.add_terms(self._dictionary)
         sys.stderr.write("[whisper-flow] Live hyperparameter updates & RAG index applied from Control Center Dashboard.\n")
 
     def run(self) -> None:
