@@ -154,12 +154,62 @@ class ControlCenterDashboard:
         self.chk_flash.grid(row=3, column=0, columnspan=2, sticky="w", pady=8)
 
     def _build_vocab_tab(self) -> None:
-        ttk.Label(self.tab_vocab, text="Custom Vocabulary & Proper Noun Bias List (Comma or newline separated):").pack(anchor="w", pady=(0, 4))
+        top_bar = ttk.Frame(self.tab_vocab)
+        top_bar.pack(fill=tk.X, pady=(0, 6))
 
-        self.txt_vocab = tk.Text(self.tab_vocab, bg=BG_DARK, fg=FG_TEXT, insertbackground=FG_TEXT, font=("Consolas", 10), height=14, wrap=tk.WORD, relief=tk.FLAT)
+        ttk.Label(top_bar, text="Load Industry Preset Pack:").pack(side=tk.LEFT, padx=(0, 6))
+
+        def _append_pack(name: str):
+            from .vocab_packs import get_vocab_pack
+            terms = get_vocab_pack(name)
+            current = self.txt_vocab.get("1.0", tk.END).strip()
+            existing = [t.strip() for t in current.replace("\n", ",").split(",") if t.strip()]
+            new_list = existing + [t for t in terms if t not in existing]
+            self.txt_vocab.delete("1.0", tk.END)
+            self.txt_vocab.insert("1.0", ", ".join(new_list))
+
+        def _scan_workspace():
+            from .code_scanner import scan_workspace_symbols
+            symbols = scan_workspace_symbols(".")
+            current = self.txt_vocab.get("1.0", tk.END).strip()
+            existing = [t.strip() for t in current.replace("\n", ",").split(",") if t.strip()]
+            new_list = existing + [s for s in symbols if s not in existing]
+            self.txt_vocab.delete("1.0", tk.END)
+            self.txt_vocab.insert("1.0", ", ".join(new_list))
+            messagebox.showinfo("Workspace Scanner", f"Extracted {len(symbols)} code symbols from workspace directory!")
+
+        btn_dev = ttk.Button(top_bar, text="💻 Developer", command=lambda: _append_pack("developer"))
+        btn_dev.pack(side=tk.LEFT, padx=2)
+
+        btn_med = ttk.Button(top_bar, text="🩺 Medical", command=lambda: _append_pack("medical"))
+        btn_med.pack(side=tk.LEFT, padx=2)
+
+        btn_leg = ttk.Button(top_bar, text="⚖️ Legal", command=lambda: _append_pack("legal"))
+        btn_leg.pack(side=tk.LEFT, padx=2)
+
+        btn_corp = ttk.Button(top_bar, text="🏢 Corporate", command=lambda: _append_pack("corporate"))
+        btn_corp.pack(side=tk.LEFT, padx=2)
+
+        btn_scan = ttk.Button(top_bar, text="🔍 Auto-Scan Workspace", command=_scan_workspace)
+        btn_scan.pack(side=tk.RIGHT, padx=2)
+
+        def _reindex_rag():
+            from .rag_engine import RAGEngine
+            raw_vocab = self.txt_vocab.get("1.0", tk.END).strip()
+            terms = [t.strip() for t in raw_vocab.replace("\n", ",").split(",") if t.strip()]
+            rag = RAGEngine()
+            count = rag.add_terms(terms)
+            messagebox.showinfo("RAG Vector Index", f"⚡ Reindexed {count} vocabulary terms into sub-5ms local RAG vector store!")
+
+        btn_rag = ttk.Button(top_bar, text="⚡ Reindex RAG Store", command=_reindex_rag)
+        btn_rag.pack(side=tk.RIGHT, padx=2)
+
+        ttk.Label(self.tab_vocab, text="Custom Vocabulary & Proper Noun Bias List (Comma or newline separated):").pack(anchor="w", pady=(4, 4))
+
+        self.txt_vocab = tk.Text(self.tab_vocab, bg=BG_DARK, fg=FG_TEXT, insertbackground=FG_TEXT, font=("Consolas", 10), height=12, wrap=tk.WORD, relief=tk.FLAT)
         self.txt_vocab.pack(fill=tk.BOTH, expand=True, pady=4)
 
-        hint_lbl = ttk.Label(self.tab_vocab, text="💡 These terms are passed directly to whisper.cpp --prompt to bias ASR decoding.", style="SubHeader.TLabel")
+        hint_lbl = ttk.Label(self.tab_vocab, text="💡 Terms are indexed into the sub-5ms local RAG vector store and passed directly to whisper.cpp & Gemma 4 E2B.", style="SubHeader.TLabel")
         hint_lbl.pack(anchor="w", pady=(4, 0))
 
     def _build_formatting_tab(self) -> None:

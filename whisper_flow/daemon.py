@@ -94,6 +94,11 @@ class Daemon:
         # Merge preserving order and uniqueness
         self._dictionary = base_dict + [w for w in learned_words if w not in base_dict]
 
+        # Initialize fast local RAG Vocabulary Engine
+        from .rag_engine import RAGEngine
+        self._rag = RAGEngine()
+        self._rag.add_terms(self._dictionary)
+
     def _stream_text_to_popup(self, text: str, words_per_chunk: int = 3, delay: float = 0.04) -> None:
         """Stream text word-by-word to the popup overlay.
 
@@ -122,7 +127,8 @@ class Daemon:
         from .vocabulary import load_learned_vocabulary
         learned_words = load_learned_vocabulary()
         self._dictionary = base_dict + [w for w in learned_words if w not in base_dict]
-        sys.stderr.write("[whisper-flow] Live hyperparameter updates applied from Control Center Dashboard.\n")
+        self._rag.add_terms(self._dictionary)
+        sys.stderr.write("[whisper-flow] Live hyperparameter updates & RAG index applied from Control Center Dashboard.\n")
 
     def run(self) -> None:
         """Start the daemon (blocking). Call from main thread."""
@@ -404,13 +410,12 @@ class Daemon:
             capture.close()
             self._capture = None
 
-            # Construct acoustic biasing prompt
-            biasing_words = list(self._dictionary) if self._dictionary else []
-            if app_name and app_name.strip():
+            # Query fast local RAG engine for top 35 relevant vocabulary terms given active window context
+            rag_query_text = f"{app_name} {window_title}"
+            rag_terms = self._rag.query(rag_query_text, top_k=35)
+            biasing_words = list(rag_terms) if rag_terms else list(self._dictionary)
+            if app_name and app_name.strip() and app_name not in biasing_words:
                 biasing_words.append(app_name.strip())
-            if window_title and window_title.strip():
-                title_words = [w.strip() for w in window_title.replace("-", " ").replace("—", " ").split() if len(w.strip()) > 2]
-                biasing_words.extend(title_words[:8])
             initial_p = ", ".join(biasing_words)
 
             # ALWAYS transcribe the full audio — never trust background chunks

@@ -277,35 +277,29 @@ class OverlayNotifier:
         self._ready.set()
 
         # Dynamic popup sizing — resize based on content length
-        def _resize_for_content(text: str):
-            """Resize the popup to fit the content dynamically.
+        def _resize_for_content(text: str = ""):
+            """Resize the popup dynamically based on actual widget geometry layout.
 
             Width: 560px (stable)
-            Height: 130px base, +20px per line, up to 50% of screen height
-            Called on every PREVIEW and RESULT message so the popup grows
-            as text is added during the typewriter reveal.
+            Height: Widget requested height + margins, capped at 50% screen height.
             """
+            try:
+                root.update_idletasks()
+            except Exception:  # noqa: BLE001
+                pass
+
+            h_req = main_frame.winfo_reqheight()
+            w = 560
+            h = h_req + 28  # Add margin padding
+
             screen_h = root.winfo_screenheight()
-            max_h = screen_h // 2  # 50% of screen height
-            if not text:
-                w, h = 560, 130
-            else:
-                # Estimate lines based on wraplength and text length
-                wrap = 530
-                chars_per_line = wrap // 8  # ~8px per char at 10pt
-                # Count explicit newlines (list items) + wrapped lines
-                lines = 0
-                for line in text.split("\n"):
-                    line_len = max(1, len(line))
-                    lines += max(1, (line_len + chars_per_line - 1) // chars_per_line)
-                lines = max(1, lines)
-                w = 560  # keep width stable
-                h = min(max_h, max(130, 70 + lines * 20))
+            max_h = screen_h // 2  # 50% max screen height
+            h = min(max_h, max(110, h))
+
             sw = root.winfo_screenwidth()
             x = (sw - w) // 2
             y = screen_h - h - 70
             root.geometry(f"{w}x{h}+{x}+{y}")
-            # Force the window manager to apply the resize immediately
             try:
                 root.update_idletasks()
             except Exception:  # noqa: BLE001
