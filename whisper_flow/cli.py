@@ -445,6 +445,17 @@ def _cmd_grid_search(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_crawl(args: argparse.Namespace) -> int:
+    """Crawl a GitHub repository and extract vocabulary terms."""
+    repo = getattr(args, "repo", "zachlatta/freeflow")
+    from .crawler import RepoCrawler
+    crawler = RepoCrawler(repo)
+    sys.stderr.write(f"[whisper-flow] Crawling repository '{repo}'...\n")
+    summary = crawler.crawl_repo_summary()
+    sys.stdout.write(json.dumps(summary, indent=2) + "\n")
+    return 0
+
+
 def _cmd_bench(args: argparse.Namespace) -> int:
     """Run a file through the pipeline and write a benchmark report."""
     if not args.file:
@@ -563,6 +574,11 @@ def build_parser() -> argparse.ArgumentParser:
                               parents=[parent])
     sp_sweep.add_argument("--apply", action="store_true", help="apply winning configuration to config.llama4.toml")
     sp_sweep.set_defaults(func=_cmd_grid_search)
+
+    sp_crawl = sub.add_parser("crawl", help="crawl a GitHub repository and extract vocabulary terms",
+                              parents=[parent])
+    sp_crawl.add_argument("--repo", default="zachlatta/freeflow", help="GitHub repo slug (e.g. zachlatta/freeflow)")
+    sp_crawl.set_defaults(func=_cmd_crawl)
 
     return p
 
