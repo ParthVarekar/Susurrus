@@ -40,6 +40,26 @@ def _which(name: str) -> str:
     return path
 
 
+def cleanup_old_temp_files(max_age_seconds: float = 3600.0) -> int:
+    """Clean up stale wf_*.wav temp files from temp directory."""
+    temp_dir = tempfile.gettempdir()
+    cleaned = 0
+    now = time.time()
+    try:
+        for fname in os.listdir(temp_dir):
+            if fname.startswith("wf_") and fname.endswith(".wav"):
+                fpath = os.path.join(temp_dir, fname)
+                try:
+                    if now - os.path.getmtime(fpath) > max_age_seconds:
+                        os.remove(fpath)
+                        cleaned += 1
+                except Exception:  # noqa: BLE001
+                    pass
+    except Exception:  # noqa: BLE001
+        pass
+    return cleaned
+
+
 def _probe_duration_seconds(path: str, ffmpeg_bin: str) -> float:
     """Best-effort duration probe via ffprobe (may not be installed)."""
     ffprobe = shutil.which("ffprobe")

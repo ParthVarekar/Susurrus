@@ -202,6 +202,7 @@ class HotkeyManager:
             if gap < self._double_tap_s:
                 # Double-tap → toggle hands-free
                 self._hands_free_active = not self._hands_free_active
+                self._dict_held = False  # Prevent release event from cancelling hands-free
                 if self._on_hands_free:
                     _safe_call(self._on_hands_free)
                 return
@@ -243,7 +244,19 @@ class HotkeyManager:
                 _safe_call(self._on_cmd_stop)
 
 
+_CALL_LOCK = threading.Lock()
+
 def _safe_call(fn: Callable[[], None]) -> None:
-    """Call fn in a daemon thread so the keyboard listener isn't blocked."""
-    t = threading.Thread(target=fn, daemon=True)
+    """Call fn in a non-blocking daemon thread with single-execution guard."""
+    def _runner():
+        if not _CALL_LOCK.acquire(blocking=False):
+            return
+        try:
+            fn()
+        except Exception as exc:
+            sys.stderr.write(f"[whisper-flow] hotkey callback error: {exc}\n")
+        finally:
+            _CALL_LOCK.release()
+
+    t = threading.Thread(target=_runner, daemon=True)
     t.start()

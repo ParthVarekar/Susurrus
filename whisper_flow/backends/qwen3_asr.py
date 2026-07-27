@@ -271,6 +271,17 @@ class Qwen3AsrBackend(TranscriptionBackend):
                 ) from exc
 
             stdout_lines = []
+            stderr_chunks = []
+
+            def _drain_stderr():
+                try:
+                    if local_proc.stderr:
+                        stderr_chunks.append(local_proc.stderr.read())
+                except Exception:  # noqa: BLE001
+                    pass
+
+            stderr_thread = threading.Thread(target=_drain_stderr, daemon=True)
+            stderr_thread.start()
 
             try:
                 for line in local_proc.stdout:
@@ -285,12 +296,8 @@ class Qwen3AsrBackend(TranscriptionBackend):
             except Exception:  # noqa: BLE001
                 pass
 
-            try:
-                local_proc.stderr.read()
-            except Exception:  # noqa: BLE001
-                pass
-
             local_proc.wait()
+            stderr_thread.join(timeout=2.0)
             self._proc = None
 
             if self._cancel_requested:
