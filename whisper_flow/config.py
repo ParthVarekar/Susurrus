@@ -88,7 +88,7 @@ class LLMConfig:
     max_tokens: int = 512
     top_p: float = 0.9
     # Extra context length to reserve for the prompt (helps avoid truncation).
-    n_ctx: int = 4096
+    n_ctx: int = 8192
     threads: int = 4
     gpu_layers: int = 0  # 0 = CPU; set >0 (or -1 for all) for GPU offload on CUDA/Metal
 
