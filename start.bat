@@ -39,6 +39,7 @@ if defined VENV_DIR (
 if /i "%1"=="gui" (
     echo [OK] Launching WhisperFlow Control Center Dashboard GUI...
     python -m whisper_flow gui --config config.llama4.toml
+    pause
     exit /b 0
 )
 
@@ -175,8 +176,15 @@ if not "%MODEL_CHOICE%"=="5" (
         ) else (
             start "llama-server" /min "%LLAMA_EXE%" -m "%~dp0models\%TARGET_MODEL_NAME%" %LLAMA_ARGS% --alias gemma-4-e2b-it --host 127.0.0.1 --port 8081
         )
-        echo [OK] llama-server process started in background. Waiting for model load (10-15s)...
-        timeout /t 12 /nobreak >nul
+        echo [OK] Waiting for llama-server to load model into VRAM...
+        powershell -Command "for ($i=0; $i -lt 30; $i++) { $s = New-Object System.Net.Sockets.TcpClient; try { $s.Connect('127.0.0.1', 8081); $s.Close(); exit 0 } catch { Start-Sleep -Seconds 1 } }; exit 1" >nul 2>&1
+        if %ERRORLEVEL% NEQ 0 (
+            color 0C
+            echo [ERROR] llama-server failed to start on port 8081 within 30 seconds.
+            pause
+            exit /b 1
+        )
+        echo [OK] llama-server is ready on port 8081!
     )
 )
 
