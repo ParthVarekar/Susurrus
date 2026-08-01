@@ -86,9 +86,10 @@ class LlamaCppBackend(LLMBackend):
 
     def _process_server(self, prompt: str, system: str, max_tokens: int,
                         temperature: float) -> str:
-        # Prepend system rules directly into user message to prevent llama-server Alpaca template confusion
-        full_user_content = f"{system}\n\nTranscript to clean:\n{prompt}" if system else prompt
-        messages = [{"role": "user", "content": full_user_content}]
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
 
         body = {
             "model": os.path.basename(self.cfg.model) or "local",
@@ -97,7 +98,7 @@ class LlamaCppBackend(LLMBackend):
             "max_tokens": max_tokens,
             "top_p": self.cfg.top_p,
             "stream": False,
-            "stop": ["<|im_end|>", "<|im_start|>", "<end_of_turn>", "<eos>", "\n---\n", "\n\n---\n", "Clean up the above transcript"],
+            "stop": ["<|im_end|>", "<|im_start|>", "<end_of_turn>", "<eos>", "</transcript>", "\n---\n", "\n\n---\n"],
         }
         url = self._base_url() + "/v1/chat/completions"
         data = json.dumps(body).encode("utf-8")
@@ -128,14 +129,33 @@ class LlamaCppBackend(LLMBackend):
             raise LLMError(f"unexpected llama-server response: {raw[:500]}") from exc
 
         cleaned = str(content).strip()
-        # Fallback: if the model echoes prompt headers, strip them out cleanly
-        if "OUTPUT: Return ONLY the cleaned text." in cleaned:
-            cleaned = cleaned.split("OUTPUT: Return ONLY the cleaned text.")[-1]
-        if "### Instruction:" in cleaned:
-            cleaned = cleaned.split("### Instruction:")[-1]
-        for delimiter in ["<|im_end|>", "<|im_start|>", "\n---\n", "\nClean up the above"]:
+
+        # Comprehensive prompt leak filtering: strip any echoed prompt headers
+        leak_markers = [
+            "OUTPUT: Return ONLY the cleaned text.",
+            "### Instruction:",
+            "Hard Contract & Cleanup Rules:",
+            "Authoritative Context Vocabulary & Proper Nouns:",
+            "No labels, no explanations, no quotes.",
+            "CORE PRINCIPLES:",
+            "WHAT TO FIX:",
+            "FORMATTING:",
+            "Below is an instruction that describes a task",
+        ]
+        for marker in leak_markers:
+            if marker in cleaned:
+                cleaned = cleaned.split(marker)[-1]
+
+        for delimiter in ["<|im_end|>", "<|im_start|>", "</transcript>", "\n---\n", "\nClean up the above"]:
             if delimiter in cleaned:
                 cleaned = cleaned.split(delimiter)[0]
+
+        # Strip any accidental wrapping quotes or tags
+        cleaned = cleaned.strip()
+        if cleaned.startswith("<transcript>"):
+            cleaned = cleaned[len("<transcript>"):].strip()
+        if cleaned.endswith("</transcript>"):
+            cleaned = cleaned[:-len("</transcript>")].strip()
 
         return cleaned.strip()
 

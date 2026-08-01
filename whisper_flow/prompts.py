@@ -157,13 +157,14 @@ def build_prompt(mode: str, transcript: str, *,
         "- Output Hygiene: Return ONLY the cleaned transcript text. Never prepend labels like 'Transcript:' or 'Here is the clean transcript'. Never wrap your output in quotation marks or triple-quotes. Output the bare text directly."
     )
 
-    # Inject Contextual Vocabulary and Active Window Context if available
+    # Inject Contextual Vocabulary and Active Window Context if available (limit to top 30 terms to prevent prompt dilution)
     context_blocks = []
     if context_words and len(context_words) > 0:
-        words_str = ", ".join(w.strip() for w in context_words if w.strip())
+        clean_words = [w.strip() for w in context_words if w.strip()]
+        words_str = ", ".join(clean_words[:30])
         if words_str:
             context_blocks.append(
-                f"Authoritative Context Vocabulary & Proper Nouns (always prefer exact spelling for phonetically similar words): {words_str}"
+                f"Authoritative Context Vocabulary & Proper Nouns: {words_str}"
             )
     if app_context and app_context.strip():
         context_blocks.append(f"Active Application Window: {app_context.strip()}")
@@ -171,7 +172,6 @@ def build_prompt(mode: str, transcript: str, *,
     if context_blocks:
         system += "\n\nContextual Intelligence:\n" + "\n".join(context_blocks)
 
-    # C4 FIX: use str.replace instead of str.format to avoid KeyError/IndexError
-    # when the transcript contains literal braces (e.g. JSON, code, {value}).
-    user = USER_TEMPLATES[mode].replace("{transcript}", transcript)
+    raw_user_template = USER_TEMPLATES[mode].replace("{transcript}", transcript)
+    user = f"Raw Input Text:\n<transcript>\n{transcript}\n</transcript>\n\nInstruction: {raw_user_template}"
     return system, user
