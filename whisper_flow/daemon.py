@@ -195,6 +195,36 @@ class Daemon:
         finally:
             self._shutdown()
 
+def _kill_llama_server() -> None:
+    if sys.platform == "win32":
+        try:
+            subprocess.run(
+                'taskkill /F /IM llama-server.exe',
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+        except Exception:
+            pass
+
+import atexit
+atexit.register(_kill_llama_server)
+
+if sys.platform == "win32":
+    import ctypes
+    def _console_ctrl_handler(ctrl_type: int) -> bool:
+        _kill_llama_server()
+        return False
+    _handler_routine = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_ulong)(_console_ctrl_handler)
+    try:
+        ctypes.windll.kernel32.SetConsoleCtrlHandler(_handler_routine, True)
+    except Exception:
+        pass
+
+
+class Daemon:
+    # ...
     def _shutdown(self) -> None:
         self._running = False
         if self._capture is not None:
@@ -204,6 +234,7 @@ class Daemon:
         if self._tray is not None:
             self._tray.stop()
         self._overlay.stop_ui_thread()
+        _kill_llama_server()
         sys.stderr.write("[whisper-flow] daemon stopped.\n")
 
     # -- Tray callbacks ------------------------------------------------------
