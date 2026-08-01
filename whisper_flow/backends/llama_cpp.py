@@ -86,10 +86,9 @@ class LlamaCppBackend(LLMBackend):
 
     def _process_server(self, prompt: str, system: str, max_tokens: int,
                         temperature: float) -> str:
-        messages = []
-        if system:
-            messages.append({"role": "system", "content": system})
-        messages.append({"role": "user", "content": prompt})
+        # Prepend system rules directly into user message to prevent llama-server Alpaca template confusion
+        full_user_content = f"{system}\n\nTranscript to clean:\n{prompt}" if system else prompt
+        messages = [{"role": "user", "content": full_user_content}]
 
         body = {
             "model": os.path.basename(self.cfg.model) or "local",
@@ -129,7 +128,11 @@ class LlamaCppBackend(LLMBackend):
             raise LLMError(f"unexpected llama-server response: {raw[:500]}") from exc
 
         cleaned = str(content).strip()
-        # Truncate any stray ChatML markers or repeated prompt echoes
+        # Fallback: if the model echoes prompt headers, strip them out cleanly
+        if "OUTPUT: Return ONLY the cleaned text." in cleaned:
+            cleaned = cleaned.split("OUTPUT: Return ONLY the cleaned text.")[-1]
+        if "### Instruction:" in cleaned:
+            cleaned = cleaned.split("### Instruction:")[-1]
         for delimiter in ["<|im_end|>", "<|im_start|>", "\n---\n", "\nClean up the above"]:
             if delimiter in cleaned:
                 cleaned = cleaned.split(delimiter)[0]
