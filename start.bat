@@ -132,7 +132,7 @@ set "LLAMA_ARGS="
 
 if "%MODEL_CHOICE%"=="1" (
     set "TARGET_MODEL_NAME=GRMR-2B-Instruct-Q4_K_M.gguf"
-    set "LLAMA_ARGS=-ngl 99 --ctx-size 2048 -t 4 --temp 0.0 --repeat-penalty 1.0"
+    set "LLAMA_ARGS=-ngl 99 --ctx-size 4096 -t 4 --temp 0.0 --repeat-penalty 1.0"
 )
 if "%MODEL_CHOICE%"=="2" (
     set "TARGET_MODEL_NAME=qwen2.5-1.5b-instruct-q4_k_m.gguf"
@@ -140,7 +140,7 @@ if "%MODEL_CHOICE%"=="2" (
 )
 if "%MODEL_CHOICE%"=="3" (
     set "TARGET_MODEL_NAME=gemma-2-2b-it-Q4_K_M.gguf"
-    set "LLAMA_ARGS=-ngl 99 --ctx-size 2048 -t 4 --temp 0.1 --repeat-penalty 1.1"
+    set "LLAMA_ARGS=-ngl 99 --ctx-size 4096 -t 4 --temp 0.1 --repeat-penalty 1.1"
 )
 if "%MODEL_CHOICE%"=="4" (
     set "TARGET_MODEL_NAME=gemma-4"
