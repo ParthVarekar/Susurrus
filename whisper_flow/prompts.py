@@ -98,9 +98,9 @@ SYSTEM_PROMPTS = {
 
 USER_TEMPLATES = {
     "summarize": "Summarize the following speech transcript:\n\n{transcript}",
-    "correct": "Clean and reformat the following speech transcript into clear text:\n\n{transcript}",
-    "polish": "Polish and reformat the following speech transcript into clear text:\n\n{transcript}",
-    "medium": "Clean and reformat the following speech transcript into clear text:\n\n{transcript}",
+    "correct": "{transcript}",
+    "polish": "{transcript}",
+    "medium": "{transcript}",
     "smart_list": "Convert the following speech transcript into a structured list:\n\n{transcript}",
     "email": "Format the following speech transcript as a professional email:\n\n{transcript}",
     "coding": "Format the following speech transcript for developer documentation or comments:\n\n{transcript}",

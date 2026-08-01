@@ -132,6 +132,15 @@ class LlamaCppBackend(LLMBackend):
 
         # Comprehensive prompt leak filtering: strip any echoed prompt headers
         leak_markers = [
+            "Clean and reformat the following speech transcript into clear text:",
+            "Polish and reformat the following speech transcript into clear text:",
+            "Summarize the following speech transcript:",
+            "Convert the following speech transcript into a structured list:",
+            "Format the following speech transcript as a professional email:",
+            "Format the following speech transcript for developer documentation or comments:",
+            "Format the following speech transcript as Meeting Notes:",
+            "Format the following speech transcript as an engaging social media post:",
+            "Extract the shell command or intent from the following speech transcript:",
             "OUTPUT: Return ONLY the cleaned text.",
             "### Instruction:",
             "Hard Contract & Cleanup Rules:",
@@ -148,8 +157,10 @@ class LlamaCppBackend(LLMBackend):
             "Task:",
         ]
         for marker in leak_markers:
-            if marker in cleaned:
-                cleaned = cleaned.split(marker)[-1]
+            if cleaned.startswith(marker):
+                cleaned = cleaned[len(marker):].strip()
+            elif marker in cleaned:
+                cleaned = cleaned.split(marker)[-1].strip()
 
         for delimiter in ["<|im_end|>", "<|im_start|>", "</transcript>", "\n---\n", "\nClean up the above"]:
             if delimiter in cleaned:
