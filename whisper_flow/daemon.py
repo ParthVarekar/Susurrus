@@ -212,6 +212,17 @@ class Daemon:
         self._running = False
         if self._hotkeys is not None:
             self._hotkeys.stop()
+        if sys.platform == "win32":
+            try:
+                subprocess.run(
+                    'taskkill /F /FI "WINDOWTITLE eq WhisperFlow llama-server*"',
+                    shell=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+            except Exception:
+                pass
 
     def _on_mode_change(self, mode: str) -> None:
         self.cfg.mode = mode

@@ -175,9 +175,9 @@ set "LLAMA_EXE=D:\llama4\llama-server.exe"
 if not exist "%LLAMA_EXE%" set "LLAMA_EXE=llama-server.exe"
 
 if "%MODEL_CHOICE%"=="4" (
-    start "WhisperFlow llama-server" "%LLAMA_EXE%" %LLAMA_ARGS% --host 127.0.0.1 --port 8081
+    start "WhisperFlow llama-server" /min "%LLAMA_EXE%" %LLAMA_ARGS% --host 127.0.0.1 --port 8081
 ) else (
-    start "WhisperFlow llama-server" "%LLAMA_EXE%" -m "%~dp0models\%TARGET_MODEL_NAME%" %LLAMA_ARGS% --alias gemma-4-e2b-it --host 127.0.0.1 --port 8081
+    start "WhisperFlow llama-server" /min "%LLAMA_EXE%" -m "%~dp0models\%TARGET_MODEL_NAME%" %LLAMA_ARGS% --alias gemma-4-e2b-it --host 127.0.0.1 --port 8081
 )
 
 echo [OK] Waiting for llama-server to load model into VRAM...
@@ -187,7 +187,6 @@ powershell -Command "$s = New-Object System.Net.Sockets.TcpClient; try { $s.Conn
 if %ERRORLEVEL% NEQ 0 (
     color 0C
     echo [ERROR] llama-server failed to start on port 8081 within 30 seconds.
-    echo Please check the open 'WhisperFlow llama-server' window for logs.
     pause
     exit /b 1
 )
@@ -208,6 +207,8 @@ echo =======================================================================
 echo.
 
 python -m whisper_flow daemon --config config.llama4.toml
+
+taskkill /F /FI "WINDOWTITLE eq WhisperFlow llama-server*" >nul 2>&1
 
 echo.
 echo =======================================================================

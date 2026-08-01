@@ -98,6 +98,7 @@ class LlamaCppBackend(LLMBackend):
             "max_tokens": max_tokens,
             "top_p": self.cfg.top_p,
             "stream": False,
+            "stop": ["<|im_end|>", "<|im_start|>", "<end_of_turn>", "<eos>", "\n---\n", "\n\n---\n", "Clean up the above transcript"],
         }
         url = self._base_url() + "/v1/chat/completions"
         data = json.dumps(body).encode("utf-8")
@@ -127,7 +128,13 @@ class LlamaCppBackend(LLMBackend):
         except (KeyError, IndexError, TypeError) as exc:
             raise LLMError(f"unexpected llama-server response: {raw[:500]}") from exc
 
-        return str(content).strip()
+        cleaned = str(content).strip()
+        # Truncate any stray ChatML markers or repeated prompt echoes
+        for delimiter in ["<|im_end|>", "<|im_start|>", "\n---\n", "\nClean up the above"]:
+            if delimiter in cleaned:
+                cleaned = cleaned.split(delimiter)[0]
+
+        return cleaned.strip()
 
     # -- cli mode (best-effort fallback) -------------------------------------
 
