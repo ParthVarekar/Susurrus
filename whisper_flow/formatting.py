@@ -262,13 +262,14 @@ def apply_smart_formatting(text: str, *, writing_style: str = "default") -> str:
     out = _remove_repeated_words(out)
 
     # Stage 6-9: ITN (time first, then dates/ordinals, then currency, then numbers)
-    # Order matters: time/dates/currency patterns are more specific than plain
-    # number runs, so they must run first to avoid being consumed by the
-    # generic number normalizer (e.g. "three thirty pm" -> "3:30 PM", not "33 pm").
     out = _apply_itn_time(out)
     out = _apply_itn_dates_ordinals(out)
     out = _apply_itn_currency(out)
     out = _apply_itn_numbers(out)
+
+    # Stage 9b: Spoken bolding & list formatting
+    out = _apply_spoken_bolding(out)
+    out = _apply_spoken_list(out)
 
     # Stage 10: capitalization
     out = _apply_capitalization(out)
@@ -589,6 +590,39 @@ def _apply_itn_dates_ordinals(text: str) -> str:
         out = re.sub(r"\b" + day_word + r"\b", day_name, out, flags=re.IGNORECASE)
 
     return out
+
+
+def _apply_spoken_bolding(text: str) -> str:
+    """Format spoken bolding commands into Markdown **bold** text."""
+    out = text
+    # Pattern: "bold for current words that <phrase>. This should be in bold." -> "**<phrase>**"
+    out = re.sub(
+        r"\bbold for (?:current |the following )?words? (?:that )?([^.]+?)\.?(?:\s+this should be in bold\.?)?\b",
+        lambda m: f"**{m.group(1).strip()}**",
+        out,
+        flags=re.IGNORECASE,
+    )
+    out = re.sub(
+        r"\bmake ([^.]+?) bold\b",
+        lambda m: f"**{m.group(1).strip()}**",
+        out,
+        flags=re.IGNORECASE,
+    )
+    return out
+
+
+def _apply_spoken_list(text: str) -> str:
+    """Format spoken ordinal list runs into clean markdown numbered lists."""
+    if re.search(r"\bfirst\b.*?\bsecond\b", text, flags=re.IGNORECASE):
+        out = re.sub(r"\b(?:then )?list them out as\b[,\s]*", "\n", text, flags=re.IGNORECASE)
+        out = re.sub(r"[,;]?\s*\bfirst[,\s]+", "\n1. ", out, flags=re.IGNORECASE)
+        out = re.sub(r"[,;]?\s*\bsecond[,\s]+", "\n2. ", out, flags=re.IGNORECASE)
+        out = re.sub(r"[,;]?\s*\bthird[,\s]+", "\n3. ", out, flags=re.IGNORECASE)
+        out = re.sub(r"[,;]?\s*\bfourth[,\s]+", "\n4. ", out, flags=re.IGNORECASE)
+        out = re.sub(r"[,;]?\s*\bfifth[,\s]+", "\n5. ", out, flags=re.IGNORECASE)
+        out = re.sub(r"[,;]?\s*\bsixth[,\s]+", "\n6. ", out, flags=re.IGNORECASE)
+        return out.strip()
+    return text
 
 
 def _apply_capitalization(text: str) -> str:
