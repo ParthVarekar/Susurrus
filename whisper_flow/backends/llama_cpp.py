@@ -155,12 +155,20 @@ class LlamaCppBackend(LLMBackend):
             if delimiter in cleaned:
                 cleaned = cleaned.split(delimiter)[0]
 
-        # Strip any accidental wrapping quotes or tags
-        cleaned = cleaned.strip()
-        while cleaned.startswith("<transcript>"):
-            cleaned = cleaned[len("<transcript>"):].strip()
-        while cleaned.endswith("</transcript>"):
-            cleaned = cleaned[:-len("</transcript>")].strip()
+        # Conversational chatbot response fallback: if LLM outputs a chatbot refusal, fall back to raw transcript
+        lower_cleaned = cleaned.lower()
+        chatbot_phrases = [
+            "i'm sorry",
+            "i am sorry",
+            "trouble understanding your request",
+            "could you please rephrase",
+            "as an ai",
+            "how can i assist",
+            "how can i help",
+            "please provide more context",
+        ]
+        if any(phrase in lower_cleaned for phrase in chatbot_phrases):
+            return prompt
 
         return cleaned.strip()
 
