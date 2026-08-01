@@ -172,6 +172,4 @@ def build_prompt(mode: str, transcript: str, *,
     if context_blocks:
         system += "\n\nContextual Intelligence:\n" + "\n".join(context_blocks)
 
-    raw_user_template = USER_TEMPLATES[mode].replace("{transcript}", transcript)
-    user = f"Raw Input Text:\n<transcript>\n{transcript}\n</transcript>\n\nInstruction: {raw_user_template}"
-    return system, user
+    return system, transcript

@@ -141,6 +141,11 @@ class LlamaCppBackend(LLMBackend):
             "WHAT TO FIX:",
             "FORMATTING:",
             "Below is an instruction that describes a task",
+            "Raw Input Text:",
+            "Input Transcript:",
+            "Spoken Transcript:",
+            "Instruction:",
+            "Task:",
         ]
         for marker in leak_markers:
             if marker in cleaned:
@@ -152,9 +157,9 @@ class LlamaCppBackend(LLMBackend):
 
         # Strip any accidental wrapping quotes or tags
         cleaned = cleaned.strip()
-        if cleaned.startswith("<transcript>"):
+        while cleaned.startswith("<transcript>"):
             cleaned = cleaned[len("<transcript>"):].strip()
-        if cleaned.endswith("</transcript>"):
+        while cleaned.endswith("</transcript>"):
             cleaned = cleaned[:-len("</transcript>")].strip()
 
         return cleaned.strip()
