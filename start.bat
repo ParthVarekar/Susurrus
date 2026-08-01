@@ -161,33 +161,39 @@ if not "%MODEL_CHOICE%"=="5" if not "%MODEL_CHOICE%"=="4" (
 :: -----------------------------------------------------------------------
 :: 6. Launch llama-server if not running
 :: -----------------------------------------------------------------------
-if not "%MODEL_CHOICE%"=="5" (
-    echo [CHECK] Checking for llama-server on port 8081...
-    powershell -Command "$s = New-Object System.Net.Sockets.TcpClient; try { $s.Connect('127.0.0.1', 8081); exit 0 } catch { exit 1 }" >nul 2>&1
-    if %ERRORLEVEL% EQU 0 (
-        echo [OK] llama-server is already running on port 8081.
-    ) else (
-        echo [STARTING] Launching llama-server...
-        set "LLAMA_EXE=D:\llama4\llama-server.exe"
-        if not exist "%LLAMA_EXE%" set "LLAMA_EXE=llama-server.exe"
+if "%MODEL_CHOICE%"=="5" goto START_DAEMON
 
-        if "%MODEL_CHOICE%"=="4" (
-            start "llama-server" /min "%LLAMA_EXE%" %LLAMA_ARGS% --host 127.0.0.1 --port 8081
-        ) else (
-            start "llama-server" /min "%LLAMA_EXE%" -m "%~dp0models\%TARGET_MODEL_NAME%" %LLAMA_ARGS% --alias gemma-4-e2b-it --host 127.0.0.1 --port 8081
-        )
-        echo [OK] Waiting for llama-server to load model into VRAM...
-        powershell -Command "for ($i=0; $i -lt 30; $i++) { $s = New-Object System.Net.Sockets.TcpClient; try { $s.Connect('127.0.0.1', 8081); $s.Close(); exit 0 } catch { Start-Sleep -Seconds 1 } }; exit 1" >nul 2>&1
-        if %ERRORLEVEL% NEQ 0 (
-            color 0C
-            echo [ERROR] llama-server failed to start on port 8081 within 30 seconds.
-            pause
-            exit /b 1
-        )
-        echo [OK] llama-server is ready on port 8081!
-    )
+echo [CHECK] Checking for llama-server on port 8081...
+powershell -Command "$s = New-Object System.Net.Sockets.TcpClient; try { $s.Connect('127.0.0.1', 8081); $s.Close(); exit 0 } catch { exit 1 }" >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    echo [OK] llama-server is already running on port 8081.
+    goto START_DAEMON
 )
 
+echo [STARTING] Launching llama-server in dedicated window...
+set "LLAMA_EXE=D:\llama4\llama-server.exe"
+if not exist "%LLAMA_EXE%" set "LLAMA_EXE=llama-server.exe"
+
+if "%MODEL_CHOICE%"=="4" (
+    start "WhisperFlow llama-server" "%LLAMA_EXE%" %LLAMA_ARGS% --host 127.0.0.1 --port 8081
+) else (
+    start "WhisperFlow llama-server" "%LLAMA_EXE%" -m "%~dp0models\%TARGET_MODEL_NAME%" %LLAMA_ARGS% --alias gemma-4-e2b-it --host 127.0.0.1 --port 8081
+)
+
+echo [OK] Waiting for llama-server to load model into VRAM...
+powershell -Command "for ($i=0; $i -lt 30; $i++) { $s = New-Object System.Net.Sockets.TcpClient; try { $s.Connect('127.0.0.1', 8081); $s.Close(); exit 0 } catch { Start-Sleep -Seconds 1 } }; exit 1" >nul 2>&1
+
+powershell -Command "$s = New-Object System.Net.Sockets.TcpClient; try { $s.Connect('127.0.0.1', 8081); $s.Close(); exit 0 } catch { exit 1 }" >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    color 0C
+    echo [ERROR] llama-server failed to start on port 8081 within 30 seconds.
+    echo Please check the open 'WhisperFlow llama-server' window for logs.
+    pause
+    exit /b 1
+)
+echo [OK] llama-server is ready on port 8081!
+
+:START_DAEMON
 :: -----------------------------------------------------------------------
 :: 7. Start the WhisperFlow daemon
 :: -----------------------------------------------------------------------
