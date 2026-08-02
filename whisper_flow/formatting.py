@@ -593,29 +593,48 @@ def _apply_itn_dates_ordinals(text: str) -> str:
 
 
 def _apply_spoken_bolding(text: str) -> str:
-    """Format spoken bolding commands into Markdown **bold** text."""
+    """Format spoken bolding commands into Markdown **bold** text.
+
+    Prevents over-bolding by capping target phrases to short phrases (1-8 words)
+    and avoiding double-wrapping.
+    """
     out = text
-    # Pattern 1: "Write the following words in bold. <phrase>." / "Write the calling boards in bold. <phrase>."
+
+    def wrap_bold(phrase: str) -> str:
+        clean = phrase.strip().strip("*").strip()
+        if not clean:
+            return phrase
+        # Don't bold if phrase is too long (over 10 words - likely a full sentence run)
+        if len(clean.split()) > 10:
+            return phrase
+        return f"**{clean}**"
+
+    # Pattern 1: "Write the following words in bold: <phrase>" (up to 8 words)
     out = re.sub(
-        r"\b(?:write|put) (?:the |this )?(?:following |calling )?(?:words|boards)?\s*in bold[\.,\s]+([^\.\n]+[\.\?]?)\b",
-        lambda m: f"**{m.group(1).strip()}**",
+        r"\b(?:write|put) (?:the |this )?(?:following |calling )?(?:words|boards)?\s*in bold[\.,\s:]+((?:\w+[\s,;]?){1,8})\b",
+        lambda m: wrap_bold(m.group(1)),
         out,
         flags=re.IGNORECASE,
     )
-    # Pattern 2: "bold for current words that <phrase>. This should be in bold." -> "**<phrase>**"
+    # Pattern 2: "bold for current words that <phrase>. This should be in bold."
     out = re.sub(
-        r"\b(?:bold|world) for (?:current |the following )?words? (?:that )?([^.]+?)\.?(?:\s+this should be in bold\.?)?\b",
-        lambda m: f"**{m.group(1).strip()}**",
+        r"\bbold for (?:current |the following )?words? (?:that )?((?:\w+[\s,;]?){1,8})\.?(?:\s+this should be in bold\.?)?\b",
+        lambda m: wrap_bold(m.group(1)),
         out,
         flags=re.IGNORECASE,
     )
-    # Pattern 3: "make <phrase> bold" -> "**<phrase>**"
+    # Pattern 3: "make <phrase> bold" (1-6 words)
     out = re.sub(
-        r"\bmake ([^.]+?) bold\b",
-        lambda m: f"**{m.group(1).strip()}**",
+        r"\bmake ((?:\w+[\s,;]?){1,6}) bold\b",
+        lambda m: wrap_bold(m.group(1)),
         out,
         flags=re.IGNORECASE,
     )
+
+    # Cleanup any accidental quadruple asterisks ****
+    while "****" in out:
+        out = out.replace("****", "**")
+
     return out
 
 
