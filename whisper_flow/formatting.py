@@ -595,43 +595,55 @@ def _apply_itn_dates_ordinals(text: str) -> str:
 def _apply_spoken_bolding(text: str) -> str:
     """Format spoken bolding commands into Markdown **bold** text.
 
-    Prevents over-bolding by capping target phrases to short phrases (1-8 words)
-    and avoiding double-wrapping.
+    Handles acoustic mishearings ('bold foreign words', 'bold calling boards', 'world', 'built')
+    and parses list items/clauses targeted for bolding.
     """
     out = text
 
-    def wrap_bold(phrase: str) -> str:
-        clean = phrase.strip().strip("*").strip()
-        if not clean:
-            return phrase
-        # Don't bold if phrase is too long (over 10 words - likely a full sentence run)
-        if len(clean.split()) > 10:
-            return phrase
-        return f"**{clean}**"
+    def bold_items(raw_items: str) -> str:
+        parts = re.split(r",|\band\b", raw_items)
+        bolded_parts = []
+        for part in parts:
+            clean = part.strip().strip("*").strip()
+            if clean and len(clean.split()) <= 8:
+                bolded_parts.append(f"**{clean}**")
+            elif clean:
+                bolded_parts.append(clean)
+        return ", ".join(bolded_parts)
 
-    # Pattern 1: "Write the following words in bold: <phrase>" (up to 8 words)
+    # Pattern A: "bold foreign/following words <items> should be bolded"
     out = re.sub(
-        r"\b(?:write|put) (?:the |this )?(?:following |calling )?(?:words|boards)?\s*in bold[\.,\s:]+((?:\w+[\s,;]?){1,8})\b",
-        lambda m: wrap_bold(m.group(1)),
-        out,
-        flags=re.IGNORECASE,
-    )
-    # Pattern 2: "bold for current words that <phrase>. This should be in bold."
-    out = re.sub(
-        r"\bbold for (?:current |the following )?words? (?:that )?((?:\w+[\s,;]?){1,8})\.?(?:\s+this should be in bold\.?)?\b",
-        lambda m: wrap_bold(m.group(1)),
-        out,
-        flags=re.IGNORECASE,
-    )
-    # Pattern 3: "make <phrase> bold" (1-6 words)
-    out = re.sub(
-        r"\bmake ((?:\w+[\s,;]?){1,6}) bold\b",
-        lambda m: wrap_bold(m.group(1)),
+        r"\b(?:bold|built|world|gold)\s+(?:the\s+)?(?:foreign|following|calling|current)?\s*(?:words|boards|points|phrases)?\s*[,:]?\s*(.+?)\s+(?:should be bolded|in bold|should be in bold)\b",
+        lambda m: bold_items(m.group(1)),
         out,
         flags=re.IGNORECASE,
     )
 
-    # Cleanup any accidental quadruple asterisks ****
+    # Pattern B: "write/put the following words in bold: <phrase>"
+    out = re.sub(
+        r"\b(?:write|put|say)\s+(?:the|this)?\s*(?:following|foreign|calling)?\s*(?:words|boards)?\s*in bold[\.,\s:]+([^\.\n]+?)(?:\.|$)",
+        lambda m: bold_items(m.group(1)),
+        out,
+        flags=re.IGNORECASE,
+    )
+
+    # Pattern C: "make <phrase> bold"
+    out = re.sub(
+        r"\bmake\s+([^\.\n]{1,50}?)\s+bold\b",
+        lambda m: bold_items(m.group(1)),
+        out,
+        flags=re.IGNORECASE,
+    )
+
+    # Pattern D: "bold <phrase>" (1-5 words standalone)
+    out = re.sub(
+        r"\bbold\s+((?:\w+[\s,;]?){1,5})\b",
+        lambda m: bold_items(m.group(1)),
+        out,
+        flags=re.IGNORECASE,
+    )
+
+    # Cleanup any accidental double-wrapping ****
     while "****" in out:
         out = out.replace("****", "**")
 
