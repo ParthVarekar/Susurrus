@@ -54,8 +54,8 @@ def test_repo_crawler_extraction():
 def test_grmr_zero_system_prompt():
     from whisper_flow.prompts import build_prompt
     sys, usr = build_prompt("correct", "hello world", model_name="GRMR-2B-Instruct-Q4_K_M.gguf")
-    assert sys == ""
-    assert usr == "hello world"
+    assert "text cleanup engine" in sys.lower()
+    assert "hello world" in usr
 
     # Default Gemma 4 pipeline returns full system prompt contract
     sys_gemma, usr_gemma = build_prompt("correct", "hello world", model_name="gemma-4-E2B-it-GGUF")
