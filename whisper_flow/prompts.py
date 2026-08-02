@@ -150,19 +150,8 @@ def build_prompt(mode: str, transcript: str, *,
     is_grmr = "grmr" in model_lower or "qwen" in model_lower or "chatml" in model_lower
 
     if is_grmr:
-        system = (
-            "You are a speech-to-text cleanup assistant. Clean up the provided transcript into clear, "
-            "well-punctuated prose. Remove filler words (um, uh, like) and fix self-corrections. "
-            "Output ONLY the final cleaned transcript text without any headers, explanations, or quotes."
-        )
-        if context_words and len(context_words) > 0:
-            words_str = ", ".join(w.strip() for w in context_words if w.strip())
-            if words_str:
-                system += f"\nVocabulary & Proper Nouns: {words_str}"
-        if app_context and app_context.strip():
-            system += f"\nActive Application Window: {app_context.strip()}"
-
-        user = f"Clean up this speech transcript:\n{transcript}"
+        system = ""
+        user = transcript
         return system, user
 
     system = SYSTEM_PROMPTS[mode]

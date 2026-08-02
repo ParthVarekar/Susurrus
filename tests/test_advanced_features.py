@@ -49,3 +49,15 @@ def test_repo_crawler_extraction():
     terms = crawler.extract_symbols_and_terms(sample_code)
     assert "AppState" in terms
     assert "WhisperConfig" in terms
+
+
+def test_grmr_zero_system_prompt():
+    from whisper_flow.prompts import build_prompt
+    sys, usr = build_prompt("correct", "hello world", model_name="GRMR-2B-Instruct-Q4_K_M.gguf")
+    assert sys == ""
+    assert usr == "hello world"
+
+    # Default Gemma 4 pipeline returns full system prompt contract
+    sys_gemma, usr_gemma = build_prompt("correct", "hello world", model_name="gemma-4-E2B-it-GGUF")
+    assert len(sys_gemma) > 50
+    assert "Hard Contract" in sys_gemma

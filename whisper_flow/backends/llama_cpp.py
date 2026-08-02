@@ -132,6 +132,20 @@ class LlamaCppBackend(LLMBackend):
         for marker in ("<|im_end|>", "<|im_start|>", "\n---", "<|endoftext|>"):
             if marker in text:
                 text = text.split(marker)[0].strip()
+
+        # Conversational error / apology fallback protection
+        conversational_fallbacks = (
+            "i'm sorry",
+            "having trouble understanding",
+            "could you please rephrase",
+            "could you please repeat",
+            "as an ai language model",
+            "not allowed to provide",
+        )
+        if any(f in text.lower() for f in conversational_fallbacks):
+            # Model output a conversational apology instead of transcript text -> fall back to input prompt
+            return prompt.strip()
+
         return text
 
     # -- cli mode (best-effort fallback) -------------------------------------
