@@ -595,13 +595,21 @@ def _apply_itn_dates_ordinals(text: str) -> str:
 def _apply_spoken_bolding(text: str) -> str:
     """Format spoken bolding commands into Markdown **bold** text."""
     out = text
-    # Pattern: "bold for current words that <phrase>. This should be in bold." -> "**<phrase>**"
+    # Pattern 1: "Write the following words in bold. <phrase>." / "Write the calling boards in bold. <phrase>."
     out = re.sub(
-        r"\bbold for (?:current |the following )?words? (?:that )?([^.]+?)\.?(?:\s+this should be in bold\.?)?\b",
+        r"\b(?:write|put) (?:the |this )?(?:following |calling )?(?:words|boards)?\s*in bold[\.,\s]+([^\.\n]+[\.\?]?)\b",
         lambda m: f"**{m.group(1).strip()}**",
         out,
         flags=re.IGNORECASE,
     )
+    # Pattern 2: "bold for current words that <phrase>. This should be in bold." -> "**<phrase>**"
+    out = re.sub(
+        r"\b(?:bold|world) for (?:current |the following )?words? (?:that )?([^.]+?)\.?(?:\s+this should be in bold\.?)?\b",
+        lambda m: f"**{m.group(1).strip()}**",
+        out,
+        flags=re.IGNORECASE,
+    )
+    # Pattern 3: "make <phrase> bold" -> "**<phrase>**"
     out = re.sub(
         r"\bmake ([^.]+?) bold\b",
         lambda m: f"**{m.group(1).strip()}**",

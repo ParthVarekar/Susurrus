@@ -156,11 +156,15 @@ class LlamaCppBackend(LLMBackend):
             "Instruction:",
             "Task:",
         ]
-        for marker in leak_markers:
-            if cleaned.startswith(marker):
-                cleaned = cleaned[len(marker):].strip()
-            elif marker in cleaned:
-                cleaned = cleaned.split(marker)[-1].strip()
+        # Vocabulary context block bleed filter: if LLM echoes the vocabulary list or window title, strip it out completely
+        if "Active Application Window:" in cleaned:
+            cleaned = cleaned.split("Active Application Window:")[0].strip()
+        if "Authoritative Context Vocabulary" in cleaned:
+            cleaned = cleaned.split("Authoritative Context Vocabulary")[0].strip()
+
+        # If LLM output matches a list of comma-separated vocabulary terms, fall back to raw transcript
+        if cleaned.count(",") > 4 and any(kw in cleaned for kw in ["daemon", "WhisperFlow", "Wispr Flow", "llama.cpp", "GGUF", "ASR"]):
+            return prompt
 
         for delimiter in ["<|im_end|>", "<|im_start|>", "</transcript>", "\n---\n", "\nClean up the above"]:
             if delimiter in cleaned:
