@@ -97,8 +97,8 @@ class LlamaCppBackend(LLMBackend):
             "temperature": temperature,
             "max_tokens": max_tokens,
             "top_p": self.cfg.top_p,
+            "stop": ["<|im_end|>", "<|im_start|>", "\n---", "<|endoftext|>"],
             "stream": False,
-            "stop": ["<|im_end|>", "<|im_start|>", "<end_of_turn>", "<eos>", "</transcript>", "\n---\n", "\n\n---\n"],
         }
         url = self._base_url() + "/v1/chat/completions"
         data = json.dumps(body).encode("utf-8")
@@ -128,64 +128,11 @@ class LlamaCppBackend(LLMBackend):
         except (KeyError, IndexError, TypeError) as exc:
             raise LLMError(f"unexpected llama-server response: {raw[:500]}") from exc
 
-        cleaned = str(content).strip()
-
-        # Comprehensive prompt leak filtering: strip any echoed prompt headers
-        leak_markers = [
-            "Clean and reformat the following speech transcript into clear text:",
-            "Polish and reformat the following speech transcript into clear text:",
-            "Summarize the following speech transcript:",
-            "Convert the following speech transcript into a structured list:",
-            "Format the following speech transcript as a professional email:",
-            "Format the following speech transcript for developer documentation or comments:",
-            "Format the following speech transcript as Meeting Notes:",
-            "Format the following speech transcript as an engaging social media post:",
-            "Extract the shell command or intent from the following speech transcript:",
-            "OUTPUT: Return ONLY the cleaned text.",
-            "### Instruction:",
-            "Hard Contract & Cleanup Rules:",
-            "Authoritative Context Vocabulary & Proper Nouns:",
-            "No labels, no explanations, no quotes.",
-            "CORE PRINCIPLES:",
-            "WHAT TO FIX:",
-            "FORMATTING:",
-            "Below is an instruction that describes a task",
-            "Raw Input Text:",
-            "Input Transcript:",
-            "Spoken Transcript:",
-            "Instruction:",
-            "Task:",
-        ]
-        # Vocabulary context block bleed filter: if LLM echoes the vocabulary list or window title, strip it out completely
-        if "Active Application Window:" in cleaned:
-            cleaned = cleaned.split("Active Application Window:")[0].strip()
-        if "Authoritative Context Vocabulary" in cleaned:
-            cleaned = cleaned.split("Authoritative Context Vocabulary")[0].strip()
-
-        # If LLM output matches a list of comma-separated vocabulary terms, fall back to raw transcript
-        if cleaned.count(",") > 4 and any(kw in cleaned for kw in ["daemon", "WhisperFlow", "Wispr Flow", "llama.cpp", "GGUF", "ASR"]):
-            return prompt
-
-        for delimiter in ["<|im_end|>", "<|im_start|>", "</transcript>", "\n---\n", "\nClean up the above"]:
-            if delimiter in cleaned:
-                cleaned = cleaned.split(delimiter)[0]
-
-        # Conversational chatbot response fallback: if LLM outputs a chatbot refusal, fall back to raw transcript
-        lower_cleaned = cleaned.lower()
-        chatbot_phrases = [
-            "i'm sorry",
-            "i am sorry",
-            "trouble understanding your request",
-            "could you please rephrase",
-            "as an ai",
-            "how can i assist",
-            "how can i help",
-            "please provide more context",
-        ]
-        if any(phrase in lower_cleaned for phrase in chatbot_phrases):
-            return prompt
-
-        return cleaned.strip()
+        text = str(content).strip()
+        for marker in ("<|im_end|>", "<|im_start|>", "\n---", "<|endoftext|>"):
+            if marker in text:
+                text = text.split(marker)[0].strip()
+        return text
 
     # -- cli mode (best-effort fallback) -------------------------------------
 

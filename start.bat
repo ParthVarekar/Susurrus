@@ -137,49 +137,56 @@ set "GRMR_MODEL_PATH=%~dp0models\GRMR-2B-Instruct-Q4_K_M.gguf"
 powershell -Command "$s = New-Object System.Net.Sockets.TcpClient; try { $s.Connect('127.0.0.1', 8081); exit 0 } catch { exit 1 }" >nul 2>&1
 set "SERVER_RUNNING=%ERRORLEVEL%"
 
-if "%MODEL_CHOICE%"=="2" (
-    echo.
-    echo [OK] Selected Model: Option 2 - GRMR 2B Instruct Q4
+if "%MODEL_CHOICE%"=="2" goto LAUNCH_GRMR
+goto LAUNCH_GEMMA
+
+:LAUNCH_GRMR
+echo.
+echo [OK] Selected Model: Option 2 - GRMR 2B Instruct Q4
+if "%SERVER_RUNNING%"=="0" (
+    echo [RESTARTING] Terminating running llama-server to load GRMR model...
+    taskkill /f /im llama-server.exe >nul 2>&1
+    timeout /t 2 /nobreak >nul
+)
+if exist "D:\llama4\llama-server.exe" (
+    echo [STARTING] Launching llama-server with GRMR 2B Instruct Q4...
+    start "llama-server" /min "D:\llama4\llama-server.exe" -m "%GRMR_MODEL_PATH%" --host 127.0.0.1 --port 8081 --ctx-size 32768 --n-gpu-layers 999 --parallel 2 --alias grmr-2b-instruct --reasoning off --reasoning-budget 0
+    echo [OK] llama-server process started in background window.
+    echo        Waiting for model loading ^(10-20 seconds^)...
+    timeout /t 12 /nobreak >nul
+    echo [OK] Wait complete. Proceeding with daemon startup.
+) else (
+    color 0E
+    echo [WARNING] D:\llama4\llama-server.exe not found.
+    color 0A
+)
+goto START_DAEMON
+
+:LAUNCH_GEMMA
+echo.
+echo [OK] Selected Model: Option 1 - Gemma 4 E2B (Default)
+if "%SERVER_RUNNING%"=="0" (
+    echo [OK] llama-server is already running on port 8081. LLM cleanup active.
+) else (
     if exist "D:\llama4\llama-server.exe" (
-        if "%SERVER_RUNNING%"=="0" (
-            echo [RESTARTING] Terminating running llama-server to load GRMR model...
-            taskkill /f /im llama-server.exe >nul 2>&1
-            timeout /t 2 /nobreak >nul
-        )
-        echo [STARTING] Launching llama-server with GRMR 2B Instruct Q4...
-        start "llama-server" /min "D:\llama4\llama-server.exe" -m "%GRMR_MODEL_PATH%" --host 127.0.0.1 --port 8081 --ctx-size 32768 --n-gpu-layers 999 --parallel 2 --alias grmr-2b-instruct --reasoning off --reasoning-budget 0
+        echo [STARTING] Launching llama-server with Gemma 4 E2B...
+        start "llama-server" /min "D:\llama4\llama-server.exe" -hf unsloth/gemma-4-E2B-it-GGUF:UD-Q4_K_XL --host 127.0.0.1 --port 8081 --ctx-size 32768 --n-gpu-layers 999 --parallel 2 --alias gemma-4-e2b-it --reasoning off --reasoning-budget 0
         echo [OK] llama-server process started in background window.
-        echo        Waiting for model loading ^(10-20 seconds^)...
-        timeout /t 12 /nobreak >nul
+        echo        Waiting for model loading ^(10-30 seconds^)...
+        timeout /t 15 /nobreak >nul
         echo [OK] Wait complete. Proceeding with daemon startup.
     ) else (
         color 0E
         echo [WARNING] D:\llama4\llama-server.exe not found.
+        echo   LLM cleanup will fail — daemon falls back to raw transcript.
+        echo   To enable LLM cleanup, install llama.cpp and set the path in config.llama4.toml
+        echo.
         color 0A
     )
-) else (
-    echo.
-    echo [OK] Selected Model: Option 1 - Gemma 4 E2B (Default)
-    if "%SERVER_RUNNING%"=="0" (
-        echo [OK] llama-server is already running on port 8081. LLM cleanup active.
-    ) else (
-        echo [STARTING] llama-server not running. Launching it now with Gemma 4 E2B...
-        if exist "D:\llama4\llama-server.exe" (
-            start "llama-server" /min "D:\llama4\llama-server.exe" -hf unsloth/gemma-4-E2B-it-GGUF:UD-Q4_K_XL --host 127.0.0.1 --port 8081 --ctx-size 32768 --n-gpu-layers 999 --parallel 2 --alias gemma-4-e2b-it --reasoning off --reasoning-budget 0
-            echo [OK] llama-server process started in background window.
-            echo        Waiting for model loading ^(10-30 seconds^)...
-            timeout /t 15 /nobreak >nul
-            echo [OK] Wait complete. Proceeding with daemon startup.
-        ) else (
-            color 0E
-            echo [WARNING] D:\llama4\llama-server.exe not found.
-            echo   LLM cleanup will fail — daemon falls back to raw transcript.
-            echo   To enable LLM cleanup, install llama.cpp and set the path in config.llama4.toml
-            echo.
-            color 0A
-        )
-    )
 )
+goto START_DAEMON
+
+:START_DAEMON
 
 :: -----------------------------------------------------------------------
 :: 6. Start the WhisperFlow daemon

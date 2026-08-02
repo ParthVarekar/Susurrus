@@ -94,8 +94,6 @@ class Daemon:
         # Merge preserving order and uniqueness
         self._dictionary = base_dict + [w for w in learned_words if w not in base_dict]
 
-        self._lock = threading.RLock()
-
         # Initialize fast local RAG Vocabulary Engine
         from .rag_engine import RAGEngine
         self._rag = RAGEngine()
@@ -120,17 +118,16 @@ class Daemon:
 
     def _on_dashboard_apply(self, new_cfg: Config) -> None:
         """Apply live hyperparameter updates from the Control Center Dashboard GUI."""
-        with self._lock:
-            self.cfg = new_cfg
-            self._overlay.set_mode(new_cfg.mode)
-            self._overlay.set_writing_style(new_cfg.writing_style)
-            self._pipeline.cfg = new_cfg
-            self._snippets = getattr(new_cfg, "snippets", {})
-            base_dict = list(getattr(new_cfg, "dictionary", []))
-            from .vocabulary import load_learned_vocabulary
-            learned_words = load_learned_vocabulary()
-            self._dictionary = base_dict + [w for w in learned_words if w not in base_dict]
-            self._rag.add_terms(self._dictionary)
+        self.cfg = new_cfg
+        self._overlay.set_mode(new_cfg.mode)
+        self._overlay.set_writing_style(new_cfg.writing_style)
+        self._pipeline.cfg = new_cfg
+        self._snippets = getattr(new_cfg, "snippets", {})
+        base_dict = list(getattr(new_cfg, "dictionary", []))
+        from .vocabulary import load_learned_vocabulary
+        learned_words = load_learned_vocabulary()
+        self._dictionary = base_dict + [w for w in learned_words if w not in base_dict]
+        self._rag.add_terms(self._dictionary)
         sys.stderr.write("[whisper-flow] Live hyperparameter updates & RAG index applied from Control Center Dashboard.\n")
 
     def run(self) -> None:
@@ -195,36 +192,6 @@ class Daemon:
         finally:
             self._shutdown()
 
-def _kill_llama_server() -> None:
-    if sys.platform == "win32":
-        try:
-            subprocess.run(
-                'taskkill /F /IM llama-server.exe',
-                shell=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-            )
-        except Exception:
-            pass
-
-import atexit
-atexit.register(_kill_llama_server)
-
-if sys.platform == "win32":
-    import ctypes
-    def _console_ctrl_handler(ctrl_type: int) -> bool:
-        _kill_llama_server()
-        return False
-    _handler_routine = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_ulong)(_console_ctrl_handler)
-    try:
-        ctypes.windll.kernel32.SetConsoleCtrlHandler(_handler_routine, True)
-    except Exception:
-        pass
-
-
-class Daemon:
-    # ...
     def _shutdown(self) -> None:
         self._running = False
         if self._capture is not None:
@@ -234,7 +201,6 @@ class Daemon:
         if self._tray is not None:
             self._tray.stop()
         self._overlay.stop_ui_thread()
-        _kill_llama_server()
         sys.stderr.write("[whisper-flow] daemon stopped.\n")
 
     # -- Tray callbacks ------------------------------------------------------
@@ -243,17 +209,6 @@ class Daemon:
         self._running = False
         if self._hotkeys is not None:
             self._hotkeys.stop()
-        if sys.platform == "win32":
-            try:
-                subprocess.run(
-                    'taskkill /F /FI "WINDOWTITLE eq WhisperFlow llama-server*"',
-                    shell=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    check=False,
-                )
-            except Exception:
-                pass
 
     def _on_mode_change(self, mode: str) -> None:
         self.cfg.mode = mode
@@ -524,6 +479,7 @@ class Daemon:
                     mode, transcript,
                     context_words=self._dictionary,
                     app_context=enriched_ctx,
+                    model_name=self.cfg.llm.model,
                 )
                 try:
                     t_llm_start = time.monotonic()

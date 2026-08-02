@@ -433,7 +433,7 @@ class Pipeline:
         if self.cfg.mode == "raw":
             return transcript
         self.notifier.stage("LLM processing", self.cfg.mode)
-        system, user = build_prompt(self.cfg.mode, transcript)
+        system, user = build_prompt(self.cfg.mode, transcript, model_name=self.cfg.llm.model)
         if self.benchmark:
             self.benchmark.start("llm")
         out = self.llm.process(
