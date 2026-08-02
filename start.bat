@@ -5,7 +5,7 @@ cd /d "%~dp0"
 cls
 echo =======================================================================
 echo               WHISPER FLOW - ONE-CLICK LAUNCHER
-echo          Qwen3-ASR (1.7B) + Interactive Model Selector
+echo            Qwen3-ASR (1.7B) + LLM cleanup (gemma-4)
 echo =======================================================================
 echo.
 
@@ -34,12 +34,12 @@ if defined VENV_DIR (
     call "%VENV_DIR%\Scripts\activate.bat"
 ) else (
     echo [INFO] No virtual environment found. Using system Python.
+    echo        (recommended: create one with: python -m venv .venv)
 )
 
 if /i "%1"=="gui" (
     echo [OK] Launching WhisperFlow Control Center Dashboard GUI...
     python -m whisper_flow gui --config config.llama4.toml
-    pause
     exit /b 0
 )
 
@@ -78,10 +78,13 @@ if %ERRORLEVEL% NEQ 0 (
     python -m pip install pyperclip
 )
 
-python -c "import huggingface_hub" >nul 2>&1
+python -c "import tomllib" >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo [INSTALL] Installing huggingface_hub ^(model downloader^)...
-    python -m pip install huggingface_hub
+    python -c "import tomli" >nul 2>&1
+    if %ERRORLEVEL% NEQ 0 (
+        echo [INSTALL] Installing tomli ^(TOML config for Python ^< 3.11^)...
+        python -m pip install tomli
+    )
 )
 
 :: -----------------------------------------------------------------------
@@ -89,21 +92,27 @@ if %ERRORLEVEL% NEQ 0 (
 :: -----------------------------------------------------------------------
 echo [CHECK] Verifying Qwen3-ASR installation...
 
-set "QWEN_BIN=%~dp0third_party\crispasr\crispasr.exe"
-set "QWEN_MODEL=%~dp0models\qwen3-asr-1.7b-q4_k.gguf"
-
-if not exist "%~dp0models" mkdir "%~dp0models"
+set "QWEN_BIN=C:\Users\Parth\Desktop\whisper\third_party\crispasr\crispasr.exe"
+set "QWEN_MODEL=C:\Users\Parth\Desktop\whisper\models\qwen3-asr-1.7b-q4_k.gguf"
 
 set "ALL_FOUND=1"
 
 if not exist "%QWEN_BIN%" (
-    echo [WARNING] crispasr.exe not found at: %QWEN_BIN%
+    color 0E
+    echo [WARNING] crispasr.exe not found at:
+    echo   %QWEN_BIN%
+    echo.
     set "ALL_FOUND=0"
+    color 0A
 )
 
 if not exist "%QWEN_MODEL%" (
-    echo [WARNING] Qwen3-ASR model not found at: %QWEN_MODEL%
+    color 0E
+    echo [WARNING] Qwen3-ASR model not found at:
+    echo   %QWEN_MODEL%
+    echo.
     set "ALL_FOUND=0"
+    color 0A
 )
 
 if "%ALL_FOUND%"=="1" (
@@ -111,104 +120,84 @@ if "%ALL_FOUND%"=="1" (
 )
 
 :: -----------------------------------------------------------------------
-:: 5. Interactive Model Selection Menu
+:: 5. Select LLM cleanup model and ensure llama-server is running
 :: -----------------------------------------------------------------------
 echo.
 echo =======================================================================
-echo   SELECT LLM CLEANUP MODEL FOR VOICE DICTATION
+echo               SELECT LLM CLEANUP MODEL BACKEND
 echo =======================================================================
-echo   [1] GRMR-2B-Instruct   ^(Recommended: Purpose-built Grammar Cleanup, 1.4GB VRAM^)
-echo   [2] Qwen2.5-1.5B       ^(Ultra-Fast, Sub-1GB VRAM, 32K Context Window^)
-echo   [3] Gemma-2-2B-it      ^(Google Knowledge-Distilled General Purpose^)
-echo   [4] Gemma-4-E2B        ^(High-Precision Hybrid Attention Model^)
-echo   [5] Raw STT Only       ^(Skip LLM Post-Processing^)
+echo   [1] Gemma 4 E2B (Default - unsloth/gemma-4-E2B-it-GGUF)
+echo   [2] GRMR 2B Instruct Q4 (Local GGUF - models/GRMR-2B-Instruct-Q4_K_M.gguf)
 echo =======================================================================
-echo.
-set /p MODEL_CHOICE="Select model choice [1-5] (default 1): "
-if "%MODEL_CHOICE%"=="" set "MODEL_CHOICE=1"
+set "MODEL_CHOICE=1"
+set /p "MODEL_CHOICE=Select model option (1 or 2) [default: 1]: "
 
-set "TARGET_MODEL_NAME="
-set "LLAMA_ARGS="
+set "GRMR_MODEL_PATH=%~dp0models\GRMR-2B-Instruct-Q4_K_M.gguf"
 
-if "%MODEL_CHOICE%"=="1" (
-    set "TARGET_MODEL_NAME=GRMR-2B-Instruct-Q4_K_M.gguf"
-    set "LLAMA_ARGS=-ngl 99 --ctx-size 8192 -t 4 --temp 0.0 --repeat-penalty 1.0"
-)
+powershell -Command "$s = New-Object System.Net.Sockets.TcpClient; try { $s.Connect('127.0.0.1', 8081); exit 0 } catch { exit 1 }" >nul 2>&1
+set "SERVER_RUNNING=%ERRORLEVEL%"
+
 if "%MODEL_CHOICE%"=="2" (
-    set "TARGET_MODEL_NAME=qwen2.5-1.5b-instruct-q4_k_m.gguf"
-    set "LLAMA_ARGS=-ngl 99 --ctx-size 8192 -t 4 --temp 0.1 --repeat-penalty 1.1"
-)
-if "%MODEL_CHOICE%"=="3" (
-    set "TARGET_MODEL_NAME=gemma-2-2b-it-Q4_K_M.gguf"
-    set "LLAMA_ARGS=-ngl 99 --ctx-size 8192 -t 4 --temp 0.1 --repeat-penalty 1.1"
-)
-if "%MODEL_CHOICE%"=="4" (
-    set "TARGET_MODEL_NAME=gemma-4"
-    set "LLAMA_ARGS=-hf unsloth/gemma-4-E4B-it-GGUF:UD-Q4_K_XL --ctx-size 32768 --parallel 2 --alias gemma-4-e2b-it --reasoning off"
-)
-
-:: Auto-download GGUF model if missing using Python downloader script
-if not "%MODEL_CHOICE%"=="5" if not "%MODEL_CHOICE%"=="4" (
-    python -m whisper_flow.downloader %MODEL_CHOICE%
-    if errorlevel 1 (
-        color 0C
-        echo [ERROR] Model download failed.
-        pause
-        exit /b 1
+    echo.
+    echo [OK] Selected Model: Option 2 - GRMR 2B Instruct Q4
+    if exist "D:\llama4\llama-server.exe" (
+        if "%SERVER_RUNNING%"=="0" (
+            echo [RESTARTING] Terminating running llama-server to load GRMR model...
+            taskkill /f /im llama-server.exe >nul 2>&1
+            timeout /t 2 /nobreak >nul
+        )
+        echo [STARTING] Launching llama-server with GRMR 2B Instruct Q4...
+        start "llama-server" /min "D:\llama4\llama-server.exe" -m "%GRMR_MODEL_PATH%" --host 127.0.0.1 --port 8081 --ctx-size 32768 --n-gpu-layers 999 --parallel 2 --alias grmr-2b-instruct --reasoning off --reasoning-budget 0
+        echo [OK] llama-server process started in background window.
+        echo        Waiting for model loading ^(10-20 seconds^)...
+        timeout /t 12 /nobreak >nul
+        echo [OK] Wait complete. Proceeding with daemon startup.
+    ) else (
+        color 0E
+        echo [WARNING] D:\llama4\llama-server.exe not found.
+        color 0A
+    )
+) else (
+    echo.
+    echo [OK] Selected Model: Option 1 - Gemma 4 E2B (Default)
+    if "%SERVER_RUNNING%"=="0" (
+        echo [OK] llama-server is already running on port 8081. LLM cleanup active.
+    ) else (
+        echo [STARTING] llama-server not running. Launching it now with Gemma 4 E2B...
+        if exist "D:\llama4\llama-server.exe" (
+            start "llama-server" /min "D:\llama4\llama-server.exe" -hf unsloth/gemma-4-E2B-it-GGUF:UD-Q4_K_XL --host 127.0.0.1 --port 8081 --ctx-size 32768 --n-gpu-layers 999 --parallel 2 --alias gemma-4-e2b-it --reasoning off --reasoning-budget 0
+            echo [OK] llama-server process started in background window.
+            echo        Waiting for model loading ^(10-30 seconds^)...
+            timeout /t 15 /nobreak >nul
+            echo [OK] Wait complete. Proceeding with daemon startup.
+        ) else (
+            color 0E
+            echo [WARNING] D:\llama4\llama-server.exe not found.
+            echo   LLM cleanup will fail — daemon falls back to raw transcript.
+            echo   To enable LLM cleanup, install llama.cpp and set the path in config.llama4.toml
+            echo.
+            color 0A
+        )
     )
 )
 
 :: -----------------------------------------------------------------------
-:: 6. Launch llama-server if not running
-:: -----------------------------------------------------------------------
-if "%MODEL_CHOICE%"=="5" goto START_DAEMON
-
-echo [CHECK] Checking for llama-server on port 8081...
-powershell -Command "$s = New-Object System.Net.Sockets.TcpClient; try { $s.Connect('127.0.0.1', 8081); $s.Close(); exit 0 } catch { exit 1 }" >nul 2>&1
-if %ERRORLEVEL% EQU 0 (
-    echo [OK] llama-server is already running on port 8081.
-    goto START_DAEMON
-)
-
-echo [STARTING] Launching llama-server in dedicated window...
-set "LLAMA_EXE=D:\llama4\llama-server.exe"
-if not exist "%LLAMA_EXE%" set "LLAMA_EXE=llama-server.exe"
-
-if "%MODEL_CHOICE%"=="4" (
-    start "WhisperFlow llama-server" /min "%LLAMA_EXE%" %LLAMA_ARGS% --host 127.0.0.1 --port 8081
-) else (
-    start "WhisperFlow llama-server" /min "%LLAMA_EXE%" -m "%~dp0models\%TARGET_MODEL_NAME%" %LLAMA_ARGS% --alias gemma-4-e2b-it --host 127.0.0.1 --port 8081
-)
-
-echo [OK] Waiting for llama-server to load model into VRAM...
-powershell -Command "for ($i=0; $i -lt 30; $i++) { $s = New-Object System.Net.Sockets.TcpClient; try { $s.Connect('127.0.0.1', 8081); $s.Close(); exit 0 } catch { Start-Sleep -Seconds 1 } }; exit 1" >nul 2>&1
-
-powershell -Command "$s = New-Object System.Net.Sockets.TcpClient; try { $s.Connect('127.0.0.1', 8081); $s.Close(); exit 0 } catch { exit 1 }" >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    color 0C
-    echo [ERROR] llama-server failed to start on port 8081 within 30 seconds.
-    pause
-    exit /b 1
-)
-echo [OK] llama-server is ready on port 8081!
-
-:START_DAEMON
-:: -----------------------------------------------------------------------
-:: 7. Start the WhisperFlow daemon
+:: 6. Start the WhisperFlow daemon
 :: -----------------------------------------------------------------------
 echo.
 echo =======================================================================
 echo   Starting WhisperFlow Daemon...
-echo =======================================================================
+echo.
+echo   Backend:  Qwen3-ASR (1.7B) + LLM cleanup (gemma-4)
+echo   Config:   config.llama4.toml
+echo.
 echo   Dictation hotkey:  Ctrl+Shift+Space  (hold to record)
 echo   Command hotkey:    Ctrl+Shift+T      (select text, hold + speak)
-echo   Quit:              right-click tray icon -> Quit
+echo   Quit:              right-click tray icon -^> Quit
 echo =======================================================================
 echo.
 
 python -m whisper_flow daemon --config config.llama4.toml
-
-taskkill /F /FI "WINDOWTITLE eq WhisperFlow llama-server*" >nul 2>&1
 
 echo.
 echo =======================================================================
